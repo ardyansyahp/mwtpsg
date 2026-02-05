@@ -1,0 +1,73 @@
+# Node modules (akan diinstall ulang di server jika perlu)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# IDE & Editor files
+.vscode/
+.idea/
+.fleet/
+.zed/
+.phpactor.json
+.phpunit.result.cache
+.phpunit.cache/
+
+# Environment files (buat manual di cPanel)
+.env
+.env.backup
+.env.production
+.env.local
+.env.*.local
+
+# Storage logs (folder storage tetap diupload, tapi isi logs tidak)
+storage/logs/*
+storage/pail/*
+storage/*.key
+!storage/logs/.gitkeep
+!storage/pail/.gitkeep
+
+# Public build (akan di-build ulang di server)
+public/build/
+public/hot
+public/storage
+
+# Test files
+tests/
+phpunit.xml
+.phpunit.cache/
+
+# Development files
+Homestead.json
+Homestead.yaml
+auth.json
+.nova/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Composer (opsional - bisa diinstall di server)
+# Uncomment jika ingin install composer di server
+# vendor/
+# composer.lock
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Documentation (opsional)
+README.md
+CHANGELOG.md
+LICENSE
+docs/
