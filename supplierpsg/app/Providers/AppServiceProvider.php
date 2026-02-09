@@ -24,12 +24,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Force Session Config for Single Sign-On
+        config(['session.domain' => null]);
+        config(['session.path' => '/']);
+        config(['session.cookie' => 'mwtpsg_session']);
+
         // Set default timezone untuk Carbon ke Asia/Jakarta
         Carbon::setLocale('id');
         date_default_timezone_set('Asia/Jakarta');
 
-        // Register Observers
-        TFinishGoodIn::observe(FinishGoodInObserver::class);
-        TFinishGoodOut::observe(FinishGoodOutObserver::class);
     }
 }

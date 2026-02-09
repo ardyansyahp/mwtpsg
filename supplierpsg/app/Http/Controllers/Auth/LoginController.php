@@ -32,13 +32,13 @@ class LoginController extends Controller
         $userId = $request->input('user_id');
         $password = $request->input('password');
 
-        // Check if this is superadmin login (user exists in users table and is_superadmin = true)
-        $user = User::where('user_id', $userId)->where('is_superadmin', true)->first();
+        // 1. Check existing User account first (for Roles 1 & 2 which require password)
+        $user = User::where('user_id', $userId)->first();
 
-        if ($user) {
-            // Superadmin requires password
+        // If user exists AND has privileged role (1=Superadmin or 2=Management)
+        if ($user && in_array($user->role, [1, 2])) {
             if (!$password) {
-                return back()->with('error', 'Password is required for superadmin');
+                return back()->with('error', 'Password is required for this account');
             }
 
             if (!\Hash::check($password, $user->password)) {
@@ -48,15 +48,15 @@ class LoginController extends Controller
             // Store user info in session
             session([
                 'user_id' => $user->user_id,
-                'is_superadmin' => $user->is_superadmin,
+                'role' => (int) $user->role,
                 'permissions' => $user->getPermissionSlugs(),
+                'mp_nama' => 'Administrator', // Or fetch if linked
             ]);
 
-            return redirect('/')->with('success', 'Welcome back, Superadmin!');
+            return redirect('/')->with('success', 'Welcome back!');
         }
 
         // Regular user login (no password required)
-        // user_id is the same as mp_id for regular users
         $manpower = MManpower::where('mp_id', $userId)->first();
 
         if (!$manpower) {
@@ -68,12 +68,11 @@ class LoginController extends Controller
         }
 
         // Check if user exists, if not create one
-        // For regular users, user_id = mp_id
         $user = User::firstOrCreate(
             ['user_id' => $userId],
             [
                 'password' => null,
-                'is_superadmin' => false,
+                'role' => 0,
             ]
         );
 
@@ -83,7 +82,7 @@ class LoginController extends Controller
         // Store user info in session
         session([
             'user_id' => $user->user_id,
-            'is_superadmin' => $user->is_superadmin,
+            'role' => (int) $user->role,
             'permissions' => $user->getPermissionSlugs(),
             'mp_nama' => $manpower->nama,
         ]);

@@ -243,13 +243,12 @@
 <div id="appPlaceholder" style="display: none;"></div>
 <div id="controlSupplierApp">
     <!-- Normal mode header -->
-    <div id="normalHeader" class="p-6">
-        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">📊 Monitoring Delivery per Item</h1>
+    <div id="normalHeader" class="px-4 py-2">
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-2 mb-2">
+            <div class="hidden">
             </div>
             
-            <div class="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
+            <div class="flex flex-col lg:flex-row gap-3 items-start lg:items-center w-full justify-between">
                 <!-- Filters Section -->
                 <div class="flex flex-wrap gap-2 items-center">
                     <div class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border shadow-sm">
@@ -333,7 +332,7 @@
 
     <!-- Fullscreen mode header (hidden by default) -->
     <div id="fullscreenHeader" class="fullscreen-header" style="display: none;">
-        <h2 style="margin: 0; font-size: 18px; color: #1976d2;">📊 Monitoring Delivery per Item</h2>
+        <h2 style="margin: 0; font-size: 18px; color: #1976d2;">📊 Monitoring Vendor Delivery</h2>
         <div>
             <label class="mr-2 font-semibold" style="font-size: 13px;">📅 Periode:</label>
             <input type="month" 
@@ -368,7 +367,7 @@
     
 
     
-    <div id="tableContainer" class="overflow-auto" style="max-height: calc(100vh - 200px);">
+    <div id="tableContainer" class="overflow-auto" style="max-height: calc(100vh - 230px);">
         <table class="item-matrix-table">
             <thead>
                 <tr>
@@ -693,7 +692,7 @@
     </div>
     
     <!-- Pagination & Rows Per Page -->
-    <div class="px-6 py-4 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div class="px-4 py-2 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-4 text-sm text-gray-600 order-2 md:order-1">
             <div class="flex items-center gap-2">
                 <span>Tampilkan</span>

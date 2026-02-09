@@ -5,8 +5,8 @@
     {{-- Header --}}
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">Dashboard Bahan Baku</h1>
-            <p class="text-gray-600 mt-1">Monitoring pergerakan data bahan baku (Receiving & Supply)</p>
+            <h1 class="text-xl font-bold text-gray-900 leading-none">Dashboard Bahan Baku</h1>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Monitoring pergerakan data bahan baku (Receiving & Supply)</p>
         </div>
         <div class="text-sm text-gray-500">
             <i class="fas fa-calendar-alt mr-2"></i>

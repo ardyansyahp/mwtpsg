@@ -20,7 +20,7 @@ class User extends Authenticatable
     protected $fillable = [
         'user_id',
         'password',
-        'is_superadmin',
+        'role',
     ];
 
     /**
@@ -41,7 +41,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'is_superadmin' => 'boolean',
+            'role' => 'integer',
             'password' => 'hashed',
         ];
     }
@@ -68,7 +68,7 @@ class User extends Authenticatable
      */
     public function isSuperadmin(): bool
     {
-        return $this->is_superadmin;
+        return $this->role === 1;
     }
 
     /**
@@ -77,7 +77,7 @@ class User extends Authenticatable
     public function hasPermission(string $slug): bool
     {
         // Superadmin has all permissions
-        if ($this->is_superadmin) {
+        if ($this->role === 1) {
             return true;
         }
 
@@ -89,10 +89,26 @@ class User extends Authenticatable
      */
     public function getPermissionSlugs(): array
     {
-        if ($this->is_superadmin) {
+        if ($this->role === 1) {
             return ['*']; // Superadmin has all permissions
         }
 
         return $this->permissions()->pluck('slug')->toArray();
+    }
+
+    /**
+     * Check if user is Kabag (Kepala Bagian).
+     * Kabag users automatically get access to profile settings.
+     */
+    public function isKabag(): bool
+    {
+        // Load manpower relationship if not already loaded
+        if (!$this->relationLoaded('manpower')) {
+            $this->load('manpower');
+        }
+
+        // Check if manpower exists and bagian contains 'kabag' (case-insensitive)
+        return $this->manpower && 
+               stripos($this->manpower->bagian, 'kabag') !== false;
     }
 }

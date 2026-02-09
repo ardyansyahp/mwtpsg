@@ -1,555 +1,257 @@
 @extends('layout.app')
 
+@section('title', 'Control Supplier Dashboard')
+
 @section('content')
-<div class="min-h-screen bg-gray-100 p-4 fade-in">
-    {{-- Header Section --}}
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Control Supplier - {{ $viewMode === 'daily' ? 'Harian' : 'Bulanan' }}</h1>
-                <p class="text-gray-600">{{ $formattedDate }}</p>
+<div class="h-[calc(100vh-112px)] bg-gray-50 flex flex-col overflow-hidden">
+    {{-- Top Navigation & Filters --}}
+    <div class="bg-white border-b border-gray-200 px-4 py-2 flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
+        <div>
+            <h1 class="text-lg font-bold text-gray-900 flex items-center gap-2 leading-none">
+                <span class="w-1.5 h-5 bg-emerald-600 rounded-full"></span>
+                Control Supplier Performance
+            </h1>
+            <p class="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">{{ $formattedDate }} • Mode: {{ ucfirst($viewMode) }}</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            {{-- Mode Toggle --}}
+            <div class="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
+                <button onclick="loadControlDashboard('{{ $dateStr }}', '{{ $category }}', 'daily')" 
+                    class="px-3 py-1 text-[10px] font-bold rounded-md transition-all {{ $viewMode === 'daily' ? 'bg-white shadow-sm text-emerald-700' : 'text-gray-500 hover:text-gray-700' }}">
+                    DAILY
+                </button>
+                <button onclick="loadControlDashboard('{{ $dateStr }}', '{{ $category }}', 'monthly')" 
+                    class="px-3 py-1 text-[10px] font-bold rounded-md transition-all {{ $viewMode === 'monthly' ? 'bg-white shadow-sm text-emerald-700' : 'text-gray-500 hover:text-gray-700' }}">
+                    MONTHLY
+                </button>
             </div>
-            <div class="flex items-center gap-4">
-                {{-- View Mode Toggle --}}
-                <div class="flex bg-gray-200 rounded-md p-1">
-                    <button type="button" 
-                        onclick="loadControlSupplierDashboard(document.querySelector('[name=date]').value, document.querySelector('[name=category]').value, 'daily')"
-                        class="px-3 py-1.5 text-sm rounded {{ $viewMode === 'daily' ? 'bg-white shadow-sm font-semibold' : 'text-gray-600' }}">
-                        Harian
-                    </button>
-                    <button type="button" 
-                        onclick="loadControlSupplierDashboard(document.querySelector('[name=date]').value, document.querySelector('[name=category]').value, 'monthly')"
-                        class="px-3 py-1.5 text-sm rounded {{ $viewMode === 'monthly' ? 'bg-white shadow-sm font-semibold' : 'text-gray-600' }}">
-                        Bulanan
-                    </button>
-                </div>
 
-                {{-- Date & Category Filter --}}
-                <form id="controlSupplierFilterForm" class="flex items-center gap-2">
-                    <select name="category" 
-                        class="border rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 capitalize"
-                        onchange="loadControlSupplierDashboard(this.form.date.value, this.value, '{{ $viewMode }}')">
-                        <option value="all" {{ (request('category') == 'all' || !request('category')) ? 'selected' : '' }}>All Categories</option>
-                        <option value="material" {{ request('category') == 'material' ? 'selected' : '' }}>Material/Masterbatch</option>
-                        <option value="subpart" {{ request('category') == 'subpart' ? 'selected' : '' }}>Subpart</option>
-                        <option value="layer" {{ request('category') == 'layer' ? 'selected' : '' }}>Layer</option>
-                        <option value="box" {{ request('category') == 'box' ? 'selected' : '' }}>Box</option>
-                        <option value="polybag" {{ request('category') == 'polybag' ? 'selected' : '' }}>Polybag</option>
-                        <option value="rempart" {{ request('category') == 'rempart' ? 'selected' : '' }}>Rempart</option>
-                    </select>
-
-                    <input type="date" name="date" value="{{ $dateStr }}" 
-                        class="border rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        onchange="loadControlSupplierDashboard(this.value, this.form.category.value, '{{ $viewMode }}')">
-                    <input type="hidden" name="view_mode" value="{{ $viewMode }}">
-                </form>
+            {{-- Category & Date --}}
+            <div class="flex items-center gap-2">
+                <select id="catSelect" onchange="updateFilters()" class="text-[10px] font-bold border-gray-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-gray-50 px-2 py-1 capitalize">
+                    <option value="all" {{ $category == 'all' ? 'selected' : '' }}>All Components</option>
+                    <option value="material" {{ $category == 'material' ? 'selected' : '' }}>Material</option>
+                    <option value="subpart" {{ $category == 'subpart' ? 'selected' : '' }}>Subpart</option>
+                    <option value="layer" {{ $category == 'layer' ? 'selected' : '' }}>Layer</option>
+                    <option value="box" {{ $category == 'box' ? 'selected' : '' }}>Box</option>
+                    <option value="polybag" {{ $category == 'polybag' ? 'selected' : '' }}>Polybag</option>
+                    <option value="rempart" {{ $category == 'rempart' ? 'selected' : '' }}>Rempart</option>
+                </select>
+                <input type="date" id="dateInput" value="{{ $dateStr }}" onchange="updateFilters()" 
+                    class="text-[10px] font-bold border-gray-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-gray-50 px-2 py-1">
             </div>
         </div>
     </div>
 
-    {{-- Charts Section --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {{-- Trend Chart --}}
-        <div class="bg-white rounded-lg shadow-sm p-4 h-80 flex flex-col" style="height: 320px;">
-            <h3 class="text-sm font-bold text-gray-700 mb-2 flex-shrink-0">
-                {{ $viewMode === 'daily' ? 'Daily Trend - Last 30 Days (Service Rate %)' : 'Monthly Achievement Trend (Service Rate %)' }}
-            </h3>
-            <div class="flex-1 relative min-h-0" style="position: relative; overflow: hidden;">
-                <canvas id="trendChart"></canvas>
+    {{-- Main Dashboard Grid --}}
+    <div class="flex-1 p-3 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden">
+        
+        {{-- Left Column: Summary & Trend (7/12) --}}
+        <div class="lg:col-span-7 flex flex-col gap-3 overflow-hidden">
+            {{-- Quick KPI Row --}}
+            @php
+                $totalPO = $items->sum('delivery_po');
+                $totalAct = $items->sum('delivery_act');
+                $overallSR = $totalPO > 0 ? round(($totalAct / $totalPO) * 100, 1) : 0;
+            @endphp
+            <div class="grid grid-cols-4 gap-2">
+                <div class="bg-white border border-gray-200 p-3 rounded-xl shadow-sm">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Plan</p>
+                    <h3 class="text-lg font-black text-gray-900 mt-0.5">{{ number_format($totalPO) }}</h3>
+                </div>
+                <div class="bg-white border border-gray-200 p-3 rounded-xl shadow-sm">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Arrival</p>
+                    <h3 class="text-lg font-black text-emerald-600 mt-0.5">{{ number_format($totalAct) }}</h3>
+                </div>
+                <div class="bg-white border border-gray-200 p-3 rounded-xl shadow-sm">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Balance</p>
+                    <h3 class="text-lg font-black {{ ($totalAct - $totalPO) < 0 ? 'text-red-600' : 'text-green-600' }} mt-0.5">{{ number_format($totalAct - $totalPO) }}</h3>
+                </div>
+                <div class="bg-white border-2 border-emerald-500 p-3 rounded-xl shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-1 opacity-10">
+                        <svg class="w-10 h-10 text-emerald-900" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+                    </div>
+                    <p class="text-[9px] font-black text-emerald-700 uppercase tracking-widest relative z-10">Service Rate</p>
+                    <h3 class="text-xl font-black text-emerald-800 mt-0.5 relative z-10">{{ $overallSR }}%</h3>
+                </div>
+            </div>
+
+            {{-- Trend Chart --}}
+            <div class="flex-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col">
+                <h3 class="text-[10px] font-black text-gray-800 uppercase tracking-wider mb-2 border-b border-gray-50 pb-1 flex items-center gap-2">
+                    <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                    Delivery Achievement Trend (Last 30 Days)
+                </h3>
+                <div class="flex-1 relative">
+                    <canvas id="trendChart"></canvas>
+                </div>
             </div>
         </div>
 
-        {{-- Category Chart --}}
-        <div class="bg-white rounded-lg shadow-sm p-4 h-80 flex flex-col" style="height: 320px;">
-            <h3 class="text-sm font-bold text-gray-700 mb-2 flex-shrink-0">
-                {{ $viewMode === 'daily' ? 'Category Achievement - Selected Date (SR %)' : 'Category Achievement (Current Month SR %)' }}
-            </h3>
-            <div class="flex-1 relative min-h-0" style="position: relative; overflow: hidden;">
-                <canvas id="categoryChart"></canvas>
+        {{-- Right Column: Category & Vendor Ranking (5/12) --}}
+        <div class="lg:col-span-5 flex flex-col gap-3 overflow-hidden">
+            
+            {{-- Category Achievement --}}
+            <div class="h-1/3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col">
+                <h3 class="text-[10px] font-black text-gray-800 uppercase tracking-wider mb-1 border-b border-gray-50 pb-1">Category Performance</h3>
+                <div class="flex-1 relative">
+                    <canvas id="categoryChart"></canvas>
+                </div>
             </div>
-        </div>
-        
-        {{-- Supplier Chart (Full Width) --}}
-        <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-4 h-80 flex flex-col" style="height: 320px;">
-             <h3 class="text-sm font-bold text-gray-700 mb-2 flex-shrink-0">
-                {{ $viewMode === 'daily' ? 'Supplier Achievement - Selected Date (SR %)' : 'Supplier Achievement (Current Month SR %)' }}
-             </h3>
-             <div class="flex-1 relative min-h-0" style="position: relative; overflow: hidden;">
-                <canvas id="supplierChart"></canvas>
-            </div>
-        </div>
-    </div>
-    
-    
-    @php
-        $hasData = !$supplierStats->isEmpty() || !$categoryStats->isEmpty();
-        // Check if trend data has any non-zero values
-        $hasTrend = collect($trendData)->sum('plan') > 0;
-        
-        // Calculate summary statistics
-        $lowSRItems = $items->filter(function($item) {
-            return $item['delivery_sr'] < 90 && $item['delivery_po'] > 0;
-        })->sortBy('delivery_sr')->take(5);
-        
-        $highOutstandingItems = $items->filter(function($item) {
-            return abs($item['delivery_balance']) > 0;
-        })->sortByDesc(function($item) {
-            return abs($item['delivery_balance']);
-        })->take(5);
-        
-        $totalPO = $items->sum('delivery_po');
-        $totalActual = $items->sum('delivery_act');
-        $totalOutstanding = $items->sum('delivery_balance');
-        $overallSR = $totalPO > 0 ? round(($totalActual / $totalPO) * 100, 1) : 0;
-    @endphp
 
-    {{-- Management Summary Cards --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        {{-- Overall Statistics --}}
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm p-4 text-white">
-            <h3 class="text-sm font-semibold mb-3 opacity-90">📊 Ringkasan {{ $viewMode === 'daily' ? 'Harian' : 'Bulanan' }}</h3>
-            <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs opacity-90">Total Plan:</span>
-                    <span class="font-bold text-lg">{{ number_format($totalPO) }}</span>
+            {{-- Vendor SR Rank (The "Resume" requested by user) --}}
+            <div class="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
+                    <h3 class="text-xs font-black text-gray-800 uppercase tracking-wider">Vendor Service Rate Resume</h3>
+                    <span class="text-[10px] font-bold text-emerald-600">Active Vendors: {{ count($supplierStats) }}</span>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs opacity-90">Total Actual:</span>
-                    <span class="font-bold text-lg">{{ number_format($totalActual) }}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs opacity-90">Outstanding:</span>
-                    <span class="font-bold text-lg {{ $totalOutstanding < 0 ? 'text-red-200' : 'text-green-200' }}">
-                        {{ number_format($totalOutstanding) }}
-                    </span>
-                </div>
-                <div class="border-t border-white/20 pt-2 mt-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs opacity-90">Overall SR:</span>
-                        <span class="font-bold text-2xl {{ $overallSR >= 90 ? 'text-green-200' : 'text-red-200' }}">
-                            {{ $overallSR }}%
-                        </span>
+                <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                    <div class="space-y-4">
+                        @foreach($supplierStats->sortByDesc('sr') as $sup)
+                        <div class="group">
+                            <div class="flex justify-between items-center mb-1.5 px-1">
+                                <span class="text-xs font-bold text-gray-700 truncate max-w-[200px]" title="{{ $sup['name'] }}">{{ $sup['name'] }}</span>
+                                <span class="text-xs font-black {{ $sup['sr'] < 90 ? 'text-red-600' : 'text-emerald-700' }}">{{ $sup['sr'] }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-50">
+                                <div class="h-full rounded-full transition-all duration-1000 ease-out {{ $sup['sr'] < 90 ? 'bg-red-500' : 'bg-emerald-500' }}" 
+                                     style="width: 0%;" 
+                                     data-width="{{ min($sup['sr'], 100) }}%">
+                                </div>
+                            </div>
+                            <div class="flex justify-between mt-1 px-1">
+                                <p class="text-[9px] font-bold text-gray-400">Total Arrived: <span class="text-gray-600">{{ number_format($sup['act']) }}</span></p>
+                                <p class="text-[9px] font-bold {{ $sup['sr'] >= 100 ? 'text-emerald-500' : 'text-amber-500' }} uppercase tracking-tighter">
+                                    {{ $sup['sr'] >= 100 ? 'Fully Fulfilled' : 'In Progress' }}
+                                </p>
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
-        </div>
 
-        {{-- Low Service Rate Items --}}
-        <div class="bg-white rounded-lg shadow-sm p-4">
-            <h3 class="text-sm font-bold text-red-600 mb-3">⚠️ Item SR Rendah (< 90%)</h3>
-            @if($lowSRItems->isEmpty())
-                <p class="text-xs text-gray-500 italic">Semua item memiliki SR ≥ 90% 👍</p>
-            @else
-                <div class="space-y-2">
-                    @foreach($lowSRItems as $item)
-                        <div class="border-l-4 border-red-400 pl-2 py-1 bg-red-50">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-xs font-semibold text-gray-800 truncate">{{ $item['nama_material'] }}</p>
-                                    <p class="text-xs text-gray-600">{{ $item['supplier_name'] }}</p>
-                                </div>
-                                <div class="text-right ml-2">
-                                    <p class="text-sm font-bold text-red-600">{{ $item['delivery_sr'] }}%</p>
-                                    <p class="text-xs text-gray-500">{{ number_format(abs($item['delivery_balance'])) }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-
-        {{-- High Outstanding PO --}}
-        <div class="bg-white rounded-lg shadow-sm p-4">
-            <h3 class="text-sm font-bold text-orange-600 mb-3">📦 Outstanding PO Tertinggi</h3>
-            @if($highOutstandingItems->isEmpty())
-                <p class="text-xs text-gray-500 italic">Tidak ada outstanding PO</p>
-            @else
-                <div class="space-y-2">
-                    @foreach($highOutstandingItems as $item)
-                        <div class="border-l-4 {{ $item['delivery_balance'] < 0 ? 'border-red-400 bg-red-50' : 'border-green-400 bg-green-50' }} pl-2 py-1">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-xs font-semibold text-gray-800 truncate">{{ $item['nama_material'] }}</p>
-                                    <p class="text-xs text-gray-600">{{ $item['supplier_name'] }}</p>
-                                </div>
-                                <div class="text-right ml-2">
-                                    <p class="text-sm font-bold {{ $item['delivery_balance'] < 0 ? 'text-red-600' : 'text-green-600' }}">
-                                        {{ number_format($item['delivery_balance']) }}
-                                    </p>
-                                    <p class="text-xs text-gray-500">SR: {{ $item['delivery_sr'] }}%</p>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-    </div>
-
-
-    @if(!$hasData && !$hasTrend)
-        <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mb-4 text-sm">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Data Grafik Kosong:</strong> Belum ada data "Schedule Header" di database. Grafik akan muncul mendatar (nol) sampai data diinput.
-        </div>
-    @endif
-
-    {{-- Supplier Summary Table --}}
-    @php
-        // Group items by supplier and calculate totals
-        $supplierSummary = $items->groupBy('supplier_name')->map(function($supplierItems, $supplierName) {
-            $totalPO = $supplierItems->sum('delivery_po');
-            $totalActual = $supplierItems->sum('delivery_act');
-            $totalBalance = $supplierItems->sum('delivery_balance');
-            $overallSR = $totalPO > 0 ? round(($totalActual / $totalPO) * 100, 1) : 0;
-            
-            return [
-                'supplier_name' => $supplierName,
-                'total_po' => $totalPO,
-                'total_actual' => $totalActual,
-                'total_balance' => $totalBalance,
-                'overall_sr' => $overallSR,
-                'item_count' => $supplierItems->count(),
-            ];
-        })->sortByDesc('total_po')->values();
-    @endphp
-
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6 border-2 border-indigo-200">
-        <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-center py-3 font-bold text-xl border-b-4 border-indigo-800">
-            📊 RINGKASAN PER SUPPLIER
-        </div>
-        
-        <div class="overflow-x-auto">
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-gradient-to-r from-gray-100 to-gray-200">
-                        <th class="p-4 border-2 border-gray-400 text-left font-bold text-sm uppercase tracking-wide">Supplier</th>
-                        <th class="p-4 border-2 border-gray-400 text-center font-bold text-sm uppercase tracking-wide">Jumlah<br>Item</th>
-                        <th class="p-4 border-2 border-gray-400 text-right font-bold text-sm uppercase tracking-wide bg-blue-50">Total Plan</th>
-                        <th class="p-4 border-2 border-gray-400 text-right font-bold text-sm uppercase tracking-wide bg-blue-50">Total Actual</th>
-                        <th class="p-4 border-2 border-gray-400 text-right font-bold text-sm uppercase tracking-wide bg-blue-50">Balance</th>
-                        <th class="p-4 border-2 border-gray-400 text-center font-bold text-sm uppercase tracking-wide bg-green-50">Service<br>Rate</th>
-                        <th class="p-4 border-2 border-gray-400 text-center font-bold text-sm uppercase tracking-wide">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($supplierSummary as $index => $supplier)
-                        <tr class="hover:bg-blue-50 transition-colors {{ $index % 2 == 0 ? 'bg-white' : 'bg-gray-50' }}">
-                            <td class="p-4 border-2 border-gray-300 font-bold text-base text-gray-800">{{ $supplier['supplier_name'] }}</td>
-                            <td class="p-4 border-2 border-gray-300 text-center text-lg font-semibold">{{ $supplier['item_count'] }}</td>
-                            <td class="p-4 border-2 border-gray-300 text-right bg-blue-50 text-base font-semibold">{{ number_format($supplier['total_po']) }}</td>
-                            <td class="p-4 border-2 border-gray-300 text-right bg-blue-50 text-base font-semibold">{{ number_format($supplier['total_actual']) }}</td>
-                            <td class="p-4 border-2 border-gray-300 text-right bg-blue-50 font-bold text-lg {{ $supplier['total_balance'] < 0 ? 'text-red-600' : 'text-green-600' }}">
-                                {{ number_format($supplier['total_balance']) }}
-                            </td>
-                            <td class="p-4 border-2 border-gray-300 text-center bg-green-50 font-bold text-2xl {{ $supplier['overall_sr'] < 90 ? 'text-red-600' : ($supplier['overall_sr'] >= 100 ? 'text-green-600' : 'text-orange-500') }}">
-                                {{ $supplier['overall_sr'] }}%
-                            </td>
-                            <td class="p-4 border-2 border-gray-300 text-center font-bold text-base {{ $supplier['overall_sr'] >= 100 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-orange-600' }}">
-                                <span class="px-3 py-1 rounded-full">{{ $supplier['overall_sr'] >= 100 ? 'CLOSE' : 'PENDING' }}</span>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="p-8 text-center text-gray-500 text-lg">
-                                Tidak ada data supplier
-                            </td>
-                        </tr>
-                    @endforelse
-                    
-                    {{-- Total Row --}}
-                    @if($supplierSummary->isNotEmpty())
-                        @php
-                            $grandTotalPO = $supplierSummary->sum('total_po');
-                            $grandTotalActual = $supplierSummary->sum('total_actual');
-                            $grandTotalBalance = $supplierSummary->sum('total_balance');
-                            $grandTotalSR = $grandTotalPO > 0 ? round(($grandTotalActual / $grandTotalPO) * 100, 1) : 0;
-                            $totalItems = $supplierSummary->sum('item_count');
-                        @endphp
-                        <tr class="bg-gradient-to-r from-gray-200 to-gray-300 border-t-4 border-gray-600">
-                            <td class="p-4 border-2 border-gray-400 text-left font-bold text-lg uppercase">🏆 TOTAL KESELURUHAN</td>
-                            <td class="p-4 border-2 border-gray-400 text-center font-bold text-xl">{{ $totalItems }}</td>
-                            <td class="p-4 border-2 border-gray-400 text-right bg-blue-100 font-bold text-lg">{{ number_format($grandTotalPO) }}</td>
-                            <td class="p-4 border-2 border-gray-400 text-right bg-blue-100 font-bold text-lg">{{ number_format($grandTotalActual) }}</td>
-                            <td class="p-4 border-2 border-gray-400 text-right bg-blue-100 font-bold text-xl {{ $grandTotalBalance < 0 ? 'text-red-600' : 'text-green-600' }}">
-                                {{ number_format($grandTotalBalance) }}
-                            </td>
-                            <td class="p-4 border-2 border-gray-400 text-center bg-green-100 font-bold text-3xl {{ $grandTotalSR < 90 ? 'text-red-600' : ($grandTotalSR >= 100 ? 'text-green-600' : 'text-orange-500') }}">
-                                {{ $grandTotalSR }}%
-                            </td>
-                            <td class="p-4 border-2 border-gray-400 text-center font-bold text-xl {{ $grandTotalSR >= 100 ? 'bg-green-200 text-green-700' : 'bg-yellow-200 text-orange-600' }}">
-                                <span class="px-4 py-2 rounded-full">{{ $grandTotalSR >= 100 ? 'CLOSE' : 'PENDING' }}</span>
-                            </td>
-                        </tr>
-                    @endif
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    {{-- Main Detail Table Section --}}
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden border-2 border-green-200">
-        {{-- Custom Header Style matching the image --}}
-        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white text-center py-3 font-bold text-xl border-b-4 border-green-800">
-            📋 DETAIL PER ITEM
-        </div>
-        
-        <div class="overflow-x-auto">
-            <table class="w-full border-collapse">
-                <thead>
-                    {{-- Top Header Row --}}
-                    <tr class="bg-gradient-to-r from-gray-100 to-gray-200">
-                        <th colspan="2" class="p-4 border-2 border-gray-400 text-left font-bold text-base">{{ $formattedDate }}</th>
-                        <th colspan="4" class="p-4 border-2 border-gray-400 bg-blue-100 font-bold text-center text-base uppercase tracking-wide">DELIVERY</th>
-                        <th rowspan="2" class="p-4 border-2 border-gray-400 bg-green-100 font-bold text-center text-base uppercase tracking-wide">STATUS</th>
-                    </tr>
-                    
-                    {{-- Column Headers --}}
-                    <tr class="bg-gradient-to-r from-gray-50 to-gray-100">
-                        <th class="p-3 border-2 border-gray-400 text-left font-bold text-sm uppercase tracking-wide">Supplier</th>
-                        <th class="p-3 border-2 border-gray-400 text-left font-bold text-sm uppercase tracking-wide">
-                            @if($category == 'all')
-                                Nama Item (All)
-                            @elseif($category == 'material' || !$category)
-                                Nama Material
-                            @else
-                                Nama {{ ucfirst($category) }}
-                            @endif
-                        </th>
-                        
-                        {{-- Delivery --}}
-                        <th class="p-3 border-2 border-gray-400 text-right font-bold text-sm uppercase tracking-wide bg-blue-50">Plan</th>
-                        <th class="p-3 border-2 border-gray-400 text-right font-bold text-sm uppercase tracking-wide bg-blue-50">Act Del</th>
-                        <th class="p-3 border-2 border-gray-400 text-right font-bold text-sm uppercase tracking-wide bg-blue-50">+/-</th>
-                        <th class="p-3 border-2 border-gray-400 text-center font-bold text-sm uppercase tracking-wide bg-blue-50">SR (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($items as $index => $item)
-                        @php
-                            $uom = in_array($item['kategori'], ['material', 'masterbatch']) ? 'KG' : 'PCS';
-                        @endphp
-                        <tr class="hover:bg-blue-50 transition-colors {{ $index % 2 == 0 ? 'bg-white' : 'bg-gray-50' }}">
-                            <td class="p-3 border-2 border-gray-300 font-semibold text-sm">{{ $item['supplier_name'] }}</td>
-                            <td class="p-3 border-2 border-gray-300 text-sm">
-                                <div class="font-semibold">{{ $item['nama_material'] }}</div>
-                                <div class="text-xs text-gray-500">{{ $uom }}</div>
-                            </td>
-                            
-                            {{-- Delivery --}}
-                            <td class="p-3 border-2 border-gray-300 text-right bg-blue-50 font-semibold text-base">{{ number_format($item['delivery_po']) }}</td>
-                            <td class="p-3 border-2 border-gray-300 text-right bg-blue-50 font-semibold text-base">{{ number_format($item['delivery_act']) }}</td>
-                            <td class="p-3 border-2 border-gray-300 text-right bg-blue-50 font-bold text-lg {{ $item['delivery_balance'] < 0 ? 'text-red-600' : 'text-green-600' }}">
-                                {{ number_format($item['delivery_balance']) }}
-                            </td>
-                            <td class="p-3 border-2 border-gray-300 text-center bg-blue-50 font-bold text-xl {{ $item['delivery_sr'] < 100 ? 'text-red-600' : 'text-green-600' }}">
-                                {{ $item['delivery_sr'] }}%
-                            </td>
-                            
-                            {{-- Status --}}
-                            <td class="p-3 border-2 border-gray-300 text-center font-bold text-sm {{ $item['delivery_sr'] >= 100 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-orange-600' }}">
-                                <span class="px-3 py-1 rounded-full">{{ $item['delivery_sr'] >= 100 ? 'CLOSE' : 'PENDING' }}</span>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="p-8 text-center text-gray-500 text-lg">
-                                Tidak ada data untuk tanggal ini
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
 
-{{-- Script for Charts --}}
+<style>
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 20px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    function initSupplierCharts() {
-        if (typeof Chart === 'undefined') {
-            setTimeout(initSupplierCharts, 100);
-            return;
-        }
+    function loadControlDashboard(date, cat, mode) {
+        window.location.href = `{{ route('controlsupplier.dashboard') }}?date=${date}&category=${cat}&view_mode=${mode}`;
+    }
 
-        // Data from Controller
+    function updateFilters() {
+        const date = document.getElementById('dateInput').value;
+        const cat = document.getElementById('catSelect').value;
+        const mode = '{{ $viewMode }}';
+        loadControlDashboard(date, cat, mode);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Animate Progress Bars ---
+        setTimeout(() => {
+            document.querySelectorAll('[data-width]').forEach(bar => {
+                bar.style.width = bar.getAttribute('data-width');
+            });
+        }, 300);
+
+        // --- Charts Initialization ---
+        if (typeof Chart === 'undefined') return;
+
         const trendData = @json($trendData ?? []);
-        const supplierData = @json($supplierStats ?? []);
         const categoryData = @json($categoryStats ?? []);
-        
-        // Helper to destroy chart
-        const destroyChart = (id) => {
-            const chart = Chart.getChart(id);
-            if (chart) chart.destroy();
-        };
 
-        // Common Options
-        const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
+        // 1. Trend Chart
+        new Chart(document.getElementById('trendChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: trendData.map(d => d.month),
+                datasets: [
+                    {
+                        label: 'Service Rate (%)',
+                        type: 'line',
+                        data: trendData.map(d => d.sr),
+                        borderColor: '#10b981',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        yAxisID: 'ySR',
+                        order: 1
+                    },
+                    {
+                        label: 'Actual Volume',
+                        data: trendData.map(d => d.act),
+                        backgroundColor: '#334155', // Slate 700
+                        borderRadius: 4,
+                        yAxisID: 'yVol',
+                        order: 2
+                    }
+                ]
             },
-        };
-
-        // 1. Trend Chart (Plan vs Act + SR Line)
-        const canvasTrend = document.getElementById('trendChart');
-        if (canvasTrend) {
-            destroyChart('trendChart');
-            new Chart(canvasTrend.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: trendData.map(d => d.month),
-                    datasets: [
-                        {
-                            label: 'Plan',
-                            data: trendData.map(d => d.plan),
-                            backgroundColor: '#93c5fd', // Light Blue
-                            order: 2,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Actual',
-                            data: trendData.map(d => d.act),
-                            backgroundColor: '#2563eb', // Dark Blue
-                            order: 3,
-                            yAxisID: 'y'
-                        },
-                        {
-                            type: 'line',
-                            label: 'SR (%)',
-                            data: trendData.map(d => d.sr),
-                            borderColor: '#16a34a', // Green
-                            borderWidth: 2,
-                            pointRadius: 2,
-                            fill: false,
-                            order: 1,
-                            yAxisID: 'y1'
-                        }
-                    ]
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { mode: 'index', intersect: false }
                 },
-                options: {
-                    ...commonOptions,
-                    scales: {
-                        y: { 
-                            beginAtZero: true,
-                            position: 'left',
-                            title: { display: true, text: 'Quantity' }
-                        },
-                        y1: {
-                            beginAtZero: true,
-                            position: 'right',
-                            max: 120,
-                            title: { display: true, text: 'SR %' },
-                            grid: { drawOnChartArea: false }
-                        }
+                scales: {
+                    ySR: {
+                        beginAtZero: true,
+                        max: 120,
+                        position: 'right',
+                        ticks: { font: { size: 9 }, color: '#10b981' },
+                        grid: { display: false }
+                    },
+                    yVol: {
+                        beginAtZero: true,
+                        position: 'left',
+                        ticks: { font: { size: 9 }, color: '#64748b' },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: { ticks: { font: { size: 9 }, color: '#64748b' }, grid: { display: false } }
+                }
+            }
+        });
+
+        // 2. Category Chart
+        new Chart(document.getElementById('categoryChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: categoryData.map(d => d.category),
+                datasets: [{
+                    data: categoryData.map(d => d.sr),
+                    backgroundColor: categoryData.map(d => d.sr < 90 ? '#ef4444' : '#10b981'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { 
+                        beginAtZero: true, 
+                        max: 100, 
+                        ticks: { font: { size: 9 }, color: '#94a3b8' },
+                        grid: { display: false }
+                    },
+                    y: { 
+                        ticks: { font: { size: 9, weight: 'bold' }, color: '#334155' },
+                        grid: { display: false }
                     }
                 }
-            });
-        }
-
-        // 2. Category Chart (Plan vs Act)
-        const canvasCat = document.getElementById('categoryChart');
-        if (canvasCat) {
-            destroyChart('categoryChart');
-            if (categoryData.length > 0) {
-                new Chart(canvasCat.getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: categoryData.map(d => d.category),
-                        datasets: [
-                            {
-                                label: 'Plan',
-                                data: categoryData.map(d => d.plan),
-                                backgroundColor: '#fbbf24' // Amber
-                            },
-                            {
-                                label: 'Actual',
-                                data: categoryData.map(d => d.act),
-                                backgroundColor: '#f59e0b' // Dark Amber
-                            }
-                        ]
-                    },
-                    options: {
-                        ...commonOptions,
-                        scales: { y: { beginAtZero: true, title: { display: true, text: 'Quantity' } } },
-                        plugins: { 
-                            title: { display: true, text: 'Plan vs Actual by Category' },
-                            tooltip: {
-                                callbacks: {
-                                    afterBody: function(context) {
-                                        const idx = context[0].dataIndex;
-                                        const sr = categoryData[idx].sr;
-                                        return `SR: ${sr}%`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } else {
-                 canvasCat.parentNode.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">No category data available</div>';
             }
-        }
-
-        // 3. Supplier Chart (Plan vs Act)
-        const canvasSup = document.getElementById('supplierChart');
-        if (canvasSup) {
-            destroyChart('supplierChart');
-            if (supplierData.length > 0) {
-                new Chart(canvasSup.getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: supplierData.map(d => d.name),
-                        datasets: [
-                            {
-                                label: 'Plan',
-                                data: supplierData.map(d => d.plan || 0), // Handle potential undefined in mapping if new
-                                backgroundColor: '#a5b4fc' // Indigo light
-                            },
-                            {
-                                label: 'Actual',
-                                data: supplierData.map(d => d.act),
-                                backgroundColor: '#6366f1' // Indigo
-                            }
-                        ]
-                    },
-                    options: {
-                        ...commonOptions,
-                        scales: { y: { beginAtZero: true, title: { display: true, text: 'Quantity' } } },
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    afterBody: function(context) {
-                                        const idx = context[0].dataIndex;
-                                        const sr = supplierData[idx].sr;
-                                        return `SR: ${sr}%`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } else {
-                 canvasSup.parentNode.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">No supplier data available</div>';
-            }
-        }
-    }
-
-    // Call init immediately
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSupplierCharts);
-    } else {
-        initSupplierCharts();
-    }
-
-
-function loadControlSupplierDashboard(date, category, viewMode) {
-    const url = '{{ route("controlsupplier.dashboard") }}?date=' + date + '&category=' + category + '&view_mode=' + viewMode;
-    window.location.href = url;
-}
+        });
+    });
 </script>
 @endsection

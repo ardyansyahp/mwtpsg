@@ -410,275 +410,292 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
 <script>
-const { createApp } = Vue;
+    let appInstance = null;
 
-createApp({
-    data() {
-        return {
-            periode: '{{ $periode }}',
-            kategori: '{{ request('kategori', '') }}',
-            items: @json($items),
-            dates: @json($dates),
-            loading: false,
-            saving: false,
-            isFullscreen: false,
-            editingCell: null,
-            scrollPosition: { x: 0, y: 0 }
-        };
-    },
-    
-    methods: {
-        async loadData() {
-            this.loading = true;
-            
-            // Save scroll position
-            if (this.$refs.tableContainer) {
-                this.scrollPosition = {
-                    x: this.$refs.tableContainer.scrollLeft,
-                    y: this.$refs.tableContainer.scrollTop
+    function initMatrixApp() {
+        if (!document.getElementById('app')) return;
+        
+        const { createApp } = Vue;
+        
+        if (appInstance) {
+            appInstance = null;
+        }
+
+        appInstance = createApp({
+            data() {
+                return {
+                    periode: '{{ $periode }}',
+                    kategori: '{{ request('kategori', '') }}',
+                    items: @json($items),
+                    dates: @json($dates),
+                    loading: false,
+                    saving: false,
+                    isFullscreen: false,
+                    editingCell: null,
+                    scrollPosition: { x: 0, y: 0 }
                 };
-            }
+            },
             
-            try {
-                const params = new URLSearchParams();
-                params.set('periode', this.periode);
-                if (this.kategori) {
-                    params.set('kategori', this.kategori);
-                }
-                window.location.href = `?${params.toString()}`;
-            } catch (error) {
-                console.error('Error loading data:', error);
-                alert('Gagal memuat data');
-            } finally {
-                this.loading = false;
-                this.$nextTick(() => {
-                    this.setupFrozenColumns();
-                });
-            }
-        },
-        
-        toggleFullscreen() {
-            this.isFullscreen = !this.isFullscreen;
-            
-            if (this.isFullscreen) {
-                document.body.classList.add('overflow-hidden');
-                document.body.classList.add('fullscreen-active');
-            } else {
-                document.body.classList.remove('overflow-hidden');
-                document.body.classList.remove('fullscreen-active');
-            }
-            
-            this.$nextTick(() => {
-                this.setupFrozenColumns();
-            });
-        },
-        
-        async updatePONumb(item, date, value) {
-            if (!value || value.trim() === '') {
-                alert('PO Number tidak boleh kosong!');
-                return;
-            }
-            
-            this.saving = true;
-            
-            try {
-                const response = await fetch('/controlsupplier/update-ponumb', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        bahan_baku_id: item.bahan_baku_id,
-                        supplier_id: item.supplier_id,
-                        periode: this.periode,
-                        tanggal: date,
-                        ponumb: value.trim()
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await this.loadData();
-                } else {
-                    alert('Gagal menyimpan: ' + (data.error || 'Unknown error'));
-                }
-            } catch (error) {
-                alert('Gagal menyimpan: ' + error.message);
-            } finally {
-                this.saving = false;
-                this.editingCell = null;
-            }
-        },
-        
-        async updatePlan(item, date, value, ponumb) {
-            const qty = parseFloat(value) || 0;
-            
-            if (!ponumb || ponumb === '-') {
-                alert('Silakan input PO Number terlebih dahulu sebelum input Plan!');
-                this.editingCell = null;
-                return;
-            }
-            
-            this.saving = true;
-            
-            try {
-                const response = await fetch('/controlsupplier/update-plan', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        bahan_baku_id: item.bahan_baku_id,
-                        supplier_id: item.supplier_id,
-                        periode: this.periode,
-                        tanggal: date,
-                        qty: qty,
-                        ponumb: ponumb
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await this.loadData();
-                } else {
-                    alert('Gagal menyimpan: ' + (data.error || 'Unknown error'));
-                }
-            } catch (error) {
-                alert('Gagal menyimpan: ' + error.message);
-            } finally {
-                this.saving = false;
-                this.editingCell = null;
-            }
-        },
-        
-        startEdit(cellKey) {
-            this.editingCell = cellKey;
-            this.$nextTick(() => {
-                const input = document.querySelector(`input[data-cell="${cellKey}"]`);
-                if (input) {
-                    input.focus();
-                    input.select();
-                }
-            });
-        },
-        
-        formatNumber(value) {
-            if (!value || value === 0) return '-';
-            return parseFloat(value).toLocaleString('id-ID');
-        },
-        
-        calculateFrequency(item) {
-            let freqPlan = 0;
-            let freqAct = 0;
-            
-            this.dates.forEach(dateObj => {
-                const dateStr = dateObj.date.split('T')[0];
-                const daily = item.daily_details[dateStr];
-                if (daily) {
-                    if (daily.plan > 0) freqPlan++;
-                    if (daily.act > 0) freqAct++;
-                }
-            });
-            
-            const freqAr = (freqPlan + freqAct) > 0 ? (freqPlan + freqAct) / 2 : 0;
-            const freqBlc = item.total_plan > 0 ? (item.total_blc / item.total_plan) * 100 : 0;
-            
-            let freqGrade = '-';
-            if (freqAr === 0) {
-                freqGrade = '-';
-            } else if (freqAr === 1) {
-                freqGrade = 'A';
-            } else if (freqAr < 0.6) {
-                freqGrade = 'D';
-            } else if (freqAr < 0.8) {
-                freqGrade = 'C';
-            } else if (freqAr < 1) {
-                freqGrade = 'B';
-            } else {
-                freqGrade = 'A';
-            }
-            
-            return { freqPlan, freqAct, freqBlc, freqAr, freqGrade };
-        },
-        
-        setupFrozenColumns() {
-            this.$nextTick(() => {
-                const table = document.querySelector('.item-matrix-table');
-                if (!table) return;
-                
-                const supplierCols = table.querySelectorAll('.sticky-col-supplier');
-                const itemCols = table.querySelectorAll('.sticky-col-item');
-                const pointCols = table.querySelectorAll('.sticky-col-point');
-                
-                if (supplierCols.length > 0) {
-                    const supplierWidth = supplierCols[0].offsetWidth;
+            methods: {
+                async loadData() {
+                    this.loading = true;
                     
-                    itemCols.forEach(cell => {
-                        cell.style.left = supplierWidth + 'px';
+                    // Save scroll position
+                    if (this.$refs.tableContainer) {
+                        this.scrollPosition = {
+                            x: this.$refs.tableContainer.scrollLeft,
+                            y: this.$refs.tableContainer.scrollTop
+                        };
+                    }
+                    
+                    try {
+                        const params = new URLSearchParams();
+                        params.set('periode', this.periode);
+                        if (this.kategori) {
+                            params.set('kategori', this.kategori);
+                        }
+                        window.location.href = `?${params.toString()}`;
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                        alert('Gagal memuat data');
+                    } finally {
+                        this.loading = false;
+                        this.$nextTick(() => {
+                            this.setupFrozenColumns();
+                        });
+                    }
+                },
+                
+                toggleFullscreen() {
+                    this.isFullscreen = !this.isFullscreen;
+                    
+                    if (this.isFullscreen) {
+                        document.body.classList.add('overflow-hidden');
+                        document.body.classList.add('fullscreen-active');
+                    } else {
+                        document.body.classList.remove('overflow-hidden');
+                        document.body.classList.remove('fullscreen-active');
+                    }
+                    
+                    this.$nextTick(() => {
+                        this.setupFrozenColumns();
+                    });
+                },
+                
+                async updatePONumb(item, date, value) {
+                    if (!value || value.trim() === '') {
+                        alert('PO Number tidak boleh kosong!');
+                        return;
+                    }
+                    
+                    this.saving = true;
+                    
+                    try {
+                        const response = await fetch('/controlsupplier/update-ponumb', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                bahan_baku_id: item.bahan_baku_id,
+                                supplier_id: item.supplier_id,
+                                periode: this.periode,
+                                tanggal: date,
+                                ponumb: value.trim()
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            await this.loadData();
+                        } else {
+                            alert('Gagal menyimpan: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        alert('Gagal menyimpan: ' + error.message);
+                    } finally {
+                        this.saving = false;
+                        this.editingCell = null;
+                    }
+                },
+                
+                async updatePlan(item, date, value, ponumb) {
+                    const qty = parseFloat(value) || 0;
+                    
+                    if (!ponumb || ponumb === '-') {
+                        alert('Silakan input PO Number terlebih dahulu sebelum input Plan!');
+                        this.editingCell = null;
+                        return;
+                    }
+                    
+                    this.saving = true;
+                    
+                    try {
+                        const response = await fetch('/controlsupplier/update-plan', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                bahan_baku_id: item.bahan_baku_id,
+                                supplier_id: item.supplier_id,
+                                periode: this.periode,
+                                tanggal: date,
+                                qty: qty,
+                                ponumb: ponumb
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            await this.loadData();
+                        } else {
+                            alert('Gagal menyimpan: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        alert('Gagal menyimpan: ' + error.message);
+                    } finally {
+                        this.saving = false;
+                        this.editingCell = null;
+                    }
+                },
+                
+                startEdit(cellKey) {
+                    this.editingCell = cellKey;
+                    this.$nextTick(() => {
+                        const input = document.querySelector(`input[data-cell="${cellKey}"]`);
+                        if (input) {
+                            input.focus();
+                            input.select();
+                        }
+                    });
+                },
+                
+                formatNumber(value) {
+                    if (!value || value === 0) return '-';
+                    return parseFloat(value).toLocaleString('id-ID');
+                },
+                
+                calculateFrequency(item) {
+                    let freqPlan = 0;
+                    let freqAct = 0;
+                    
+                    this.dates.forEach(dateObj => {
+                        const dateStr = dateObj.date.split('T')[0];
+                        const daily = item.daily_details[dateStr];
+                        if (daily) {
+                            if (daily.plan > 0) freqPlan++;
+                            if (daily.act > 0) freqAct++;
+                        }
                     });
                     
-                    if (itemCols.length > 0) {
-                        const itemWidth = itemCols[0].offsetWidth;
-                        pointCols.forEach(cell => {
-                            cell.style.left = (supplierWidth + itemWidth) + 'px';
-                        });
+                    const freqAr = (freqPlan + freqAct) > 0 ? (freqPlan + freqAct) / 2 : 0;
+                    const freqBlc = item.total_plan > 0 ? (item.total_blc / item.total_plan) * 100 : 0;
+                    
+                    let freqGrade = '-';
+                    if (freqAr === 0) {
+                        freqGrade = '-';
+                    } else if (freqAr === 1) {
+                        freqGrade = 'A';
+                    } else if (freqAr < 0.6) {
+                        freqGrade = 'D';
+                    } else if (freqAr < 0.8) {
+                        freqGrade = 'C';
+                    } else if (freqAr < 1) {
+                        freqGrade = 'B';
+                    } else {
+                        freqGrade = 'A';
                     }
+                    
+                    return { freqPlan, freqAct, freqBlc, freqAr, freqGrade };
+                },
+                
+                setupFrozenColumns() {
+                    this.$nextTick(() => {
+                        const table = document.querySelector('.item-matrix-table');
+                        if (!table) return;
+                        
+                        const supplierCols = table.querySelectorAll('.sticky-col-supplier');
+                        const itemCols = table.querySelectorAll('.sticky-col-item');
+                        const pointCols = table.querySelectorAll('.sticky-col-point');
+                        
+                        if (supplierCols.length > 0) {
+                            const supplierWidth = supplierCols[0].offsetWidth;
+                            
+                            itemCols.forEach(cell => {
+                                cell.style.left = supplierWidth + 'px';
+                            });
+                            
+                            if (itemCols.length > 0) {
+                                const itemWidth = itemCols[0].offsetWidth;
+                                pointCols.forEach(cell => {
+                                    cell.style.left = (supplierWidth + itemWidth) + 'px';
+                                });
+                            }
+                        }
+                    });
                 }
-            });
-        }
-    },
-    
-    mounted() {
-        // ESC key handler
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isFullscreen) {
-                this.toggleFullscreen();
-            }
-        });
-        
-        // Setup frozen columns
-        this.setupFrozenColumns();
-        
-        // Resize handler
-        window.addEventListener('resize', () => {
-            this.setupFrozenColumns();
-        });
-        
-        // Restore scroll position
-        this.$nextTick(() => {
-            if (this.$refs.tableContainer && this.scrollPosition.x > 0) {
-                this.$refs.tableContainer.scrollLeft = Math.max(0, this.scrollPosition.x);
-                this.$refs.tableContainer.scrollTop = this.scrollPosition.y;
-            }
+            },
             
-            // Prevent scrolling to the left of frozen columns
-            if (this.$refs.tableContainer) {
-                // Initial reset
-                this.$refs.tableContainer.scrollLeft = Math.max(0, this.$refs.tableContainer.scrollLeft);
-                
-                // Continuous monitoring
-                this.$refs.tableContainer.addEventListener('scroll', (e) => {
-                    if (e.target.scrollLeft < 0) {
-                        requestAnimationFrame(() => {
-                            e.target.scrollLeft = 0;
-                        });
+            mounted() {
+                // ESC key handler
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.isFullscreen) {
+                        this.toggleFullscreen();
                     }
-                }, { passive: false });
+                });
                 
-                // Also prevent on wheel event
-                this.$refs.tableContainer.addEventListener('wheel', (e) => {
-                    const container = e.currentTarget;
-                    if (container.scrollLeft === 0 && e.deltaX < 0) {
-                        e.preventDefault();
+                // Setup frozen columns
+                this.setupFrozenColumns();
+                
+                // Resize handler
+                window.addEventListener('resize', () => {
+                    this.setupFrozenColumns();
+                });
+                
+                // Restore scroll position
+                this.$nextTick(() => {
+                    if (this.$refs.tableContainer && this.scrollPosition.x > 0) {
+                        this.$refs.tableContainer.scrollLeft = Math.max(0, this.scrollPosition.x);
+                        this.$refs.tableContainer.scrollTop = this.scrollPosition.y;
                     }
-                }, { passive: false });
+                    
+                    // Prevent scrolling to the left of frozen columns
+                    if (this.$refs.tableContainer) {
+                        // Initial reset
+                        this.$refs.tableContainer.scrollLeft = Math.max(0, this.$refs.tableContainer.scrollLeft);
+                        
+                        // Continuous monitoring
+                        this.$refs.tableContainer.addEventListener('scroll', (e) => {
+                            if (e.target.scrollLeft < 0) {
+                                requestAnimationFrame(() => {
+                                    e.target.scrollLeft = 0;
+                                });
+                            }
+                        }, { passive: false });
+                        
+                        // Also prevent on wheel event
+                        this.$refs.tableContainer.addEventListener('wheel', (e) => {
+                            const container = e.currentTarget;
+                            if (container.scrollLeft === 0 && e.deltaX < 0) {
+                                e.preventDefault();
+                            }
+                        }, { passive: false });
+                    }
+                });
             }
-        });
+        }).mount('#app');
     }
-}).mount('#app');
+
+    // Initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMatrixApp);
+    } else {
+        initMatrixApp();
+    }
 </script>
 @endpush

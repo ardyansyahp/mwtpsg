@@ -10,12 +10,12 @@ if (!function_exists('userCan')) {
     function userCan(string $permission): bool
     {
         // Check if user is logged in
-        if (!session()->has('user_id')) {
+        if (!session()->has('user_id') && !\Auth::check()) {
             return false;
         }
-
+ 
         // Superadmin has all permissions
-        if (session('is_superadmin', false)) {
+        if (session('is_superadmin') == true || (\Auth::check() && \Auth::user()->is_superadmin)) {
             return true;
         }
 
@@ -28,6 +28,61 @@ if (!function_exists('userCan')) {
         }
 
         return in_array($permission, $permissions);
+    }
+}
+
+if (!function_exists('userCanAny')) {
+    /**
+     * Check if the current user has any of the specified permissions.
+     *
+     * @param array $permissions
+     * @return bool
+     */
+    function userCanAny(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if (userCan($permission)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+if (!function_exists('userCanAll')) {
+    /**
+     * Check if the current user has all of the specified permissions.
+     *
+     * @param array $permissions
+     * @return bool
+     */
+    function userCanAll(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if (!userCan($permission)) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+if (!function_exists('countAccessiblePermissions')) {
+    /**
+     * Count how many permissions from the list the user has access to.
+     *
+     * @param array $permissions
+     * @return int
+     */
+    function countAccessiblePermissions(array $permissions): int
+    {
+        $count = 0;
+        foreach ($permissions as $permission) {
+            if (userCan($permission)) {
+                $count++;
+            }
+        }
+        return $count;
     }
 }
 
