@@ -1,17 +1,7 @@
 // Basic Navigation & UI Logic
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Sidebar Toggle Mobile
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', (e) => {
-            e.preventDefault();
-            sidebar.classList.toggle('hidden');
-            sidebarOverlay.classList.toggle('hidden');
-        });
-    }
+    // 1. Sidebar Toggle Mobile (Handled in app.blade.php for persistence)
+    // Removed old toggle logic to avoid conflicts
 
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', () => {

@@ -4,25 +4,57 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>PSG</title>
+    <meta name="view-transition" content="same-origin">
+    <title>Shipping PSG</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('assets/images/logoico.ico') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+
     
     <style>
         /* Critical CSS to prevent FOUC (Flash of Unstyled Content) */
         .hidden { display: none !important; }
         .invisible { visibility: hidden; }
         [x-cloak] { display: none !important; }
+
+        #sidebar   { view-transition-name: sidebar; }
+        #appHeader { view-transition-name: header; }
+        #mainContent { view-transition-name: content; }
+
+        /* Anti-Flicker for Sidebar State */
+        .sidebar-is-closed #sidebar {
+            display: none !important;
+        }
+
+        /* Smooth View Transitions */
+        ::view-transition-old(content) {
+            animation: 90ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
+        }
+        ::view-transition-new(content) {
+            animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in;
+        }
     </style>
+
+    {{-- Anti-Flicker / State Restore (Run before paint) --}}
+    <script>
+        (function() {
+            const state = localStorage.getItem('sidebarState');
+            if (state === 'closed') {
+                document.documentElement.classList.add('sidebar-is-closed');
+            }
+        })();
+    </script>
     
     <!-- Custom Styles -->
     <link rel="stylesheet" href="{{ asset('assets/css/app.css') }}">
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
     <script>
         tailwind.config = {
             theme: {
@@ -43,80 +75,193 @@
             border-bottom-color: #1e40af !important; 
         }
         header .text-gray-800, header .text-gray-700, header .text-gray-900, header svg { color: #ffffff !important; }
+        header .absolute .text-gray-900, header .absolute .text-gray-800, header .absolute .text-black { color: #111827 !important; }
+        header .absolute .text-gray-400 { color: #9ca3af !important; }
         header button:hover { background-color: rgba(255,255,255,0.1) !important; }
         title { content: "Shipping PSG"; }
     </style>
 </head>
 <body>
-    <div class="app-layout">
-        {{-- Header --}}
-        @include('layout.header')
+    <div class="flex h-screen bg-gray-50 overflow-hidden">
+        {{-- Sidebar --}}
+        @include('layout.sidebar')
 
-        <div class="app-main-wrapper">
-            {{-- Sidebar --}}
-            @include('layout.sidebar')
+        {{-- Main Content Wrapper --}}
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {{-- Header --}}
+            @include('layout.header')
 
-            {{-- Main Content Area --}}
-            <div class="app-content-area">
-                {{-- Main Content --}}
-                <main id="mainContent" class="app-main-content {{ (request()->is('/') || request()->routeIs('*.dashboard')) ? '' : 'p-6' }}">
-                    {{-- Global Flash Messages --}}
-                    @if(session('success'))
-                        <div class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded-md shadow-sm">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-green-700 font-medium">{{ session('success') }}</p>
-                                </div>
+            {{-- Main Content Scroll Area --}}
+            <main id="mainContent" class="flex-1 flex flex-col overflow-y-auto p-4 md:p-6">
+                {{-- Global Flash Messages --}}
+                @if(session('success'))
+                    <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 5000)" class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded-md shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-green-700 font-medium">{{ session('success') }}</p>
                             </div>
                         </div>
-                    @endif
+                    </div>
+                @endif
 
-                    @if(session('error'))
-                        <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-red-700 font-medium">{{ session('error') }}</p>
-                                </div>
+                @if(session('error'))
+                    <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 5000)" class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700 font-medium">{{ session('error') }}</p>
                             </div>
                         </div>
-                    @endif
+                    </div>
+                @endif
 
-                    @if(session('warning'))
-                        <div class="mb-4 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-md shadow-sm">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-yellow-700 font-medium">{{ session('warning') }}</p>
-                                </div>
+                @if(session('warning'))
+                    <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 5000)" class="mb-4 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-md shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700 font-medium">{{ session('warning') }}</p>
                             </div>
                         </div>
-                    @endif
+                    </div>
+                @endif
 
+                <div class="flex-1">
                     @yield('content')
-                </main>
-
-                {{-- Footer --}}
-                @include('layout.footer')
-            </div>
+                </div>
+            </main>
         </div>
     </div>
 
     <!-- Scripts -->
     <script src="{{ asset('assets/js/app.js') }}"></script>
+    
+    <script>
+        // Sidebar Toggle Logic (With Persistence & Transitions)
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('sidebarToggle');
+            const side = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            // Function to apply sidebar state
+            const applySidebarState = (state) => {
+                if (state === 'open') {
+                    side.classList.remove('hidden');
+                    side.classList.add('flex');
+                    document.documentElement.classList.remove('sidebar-is-closed');
+                    if (overlay && window.innerWidth < 768) overlay.classList.remove('hidden');
+                } else if (state === 'closed') {
+                    side.classList.add('hidden');
+                    side.classList.remove('flex');
+                    document.documentElement.classList.add('sidebar-is-closed');
+                    if (overlay) overlay.classList.add('hidden');
+                }
+            };
+
+            // Initial State from LocalStorage
+            const storedState = localStorage.getItem('sidebarState');
+            if (storedState) {
+                applySidebarState(storedState);
+            } else {
+                // Default: visible on desktop, hidden on mobile
+                if (window.innerWidth >= 768) {
+                    applySidebarState('open');
+                } else {
+                    applySidebarState('closed');
+                }
+            }
+            
+            // Restore Sidebar Scroll Position
+            const scrollPos = localStorage.getItem('sidebarScrollPos');
+            if (scrollPos && side) {
+                side.scrollTop = parseInt(scrollPos);
+            }
+
+            if (side) {
+                side.addEventListener('scroll', () => {
+                    localStorage.setItem('sidebarScrollPos', side.scrollTop);
+                });
+            }
+
+            if (btn && side) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    // Check effective state (either has .hidden or root has .sidebar-is-closed)
+                    const isClosed = side.classList.contains('hidden') || document.documentElement.classList.contains('sidebar-is-closed');
+                    const newState = isClosed ? 'open' : 'closed';
+                    
+                    applySidebarState(newState);
+                    localStorage.setItem('sidebarState', newState);
+                });
+
+                // Close on click outside (mobile overlay)
+                document.addEventListener('click', function(e) {
+                    if (window.innerWidth < 768 && !side.contains(e.target) && !btn.contains(e.target) && !side.classList.contains('hidden')) {
+                        applySidebarState('closed');
+                    }
+                });
+            }
+
+            // Submenu Toggles (Accordion Behavior)
+            const submenuToggles = ['masterDataToggle', 'subMasterToggle', 'bahanBakuToggle', 'stockToggle', 'loadingToggle', 'shippingToggle', 'controlToggle', 'dashboardToggle'];
+            
+            submenuToggles.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    // Remove existing listeners to avoid duplicates if re-initialized
+                    const newEl = el.cloneNode(true);
+                    el.parentNode.replaceChild(newEl, el);
+                    
+                    newEl.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation(); // Stop bubbling
+                        
+                        const subId = id.replace('Toggle', 'Submenu');
+                        const sub = document.getElementById(subId);
+                        const arrowId = id.replace('Toggle', 'Arrow');
+                        const arrow = document.getElementById(arrowId);
+                        
+                        if (sub) {
+                            const isOpening = sub.classList.contains('hidden');
+                            
+                            // Optional: Close others (Accordion style) - currently kept for consistency
+                            if (isOpening) {
+                                submenuToggles.forEach(otherId => {
+                                    if (otherId !== id) {
+                                        const otherSub = document.getElementById(otherId.replace('Toggle', 'Submenu'));
+                                        const otherArrow = document.getElementById(otherId.replace('Toggle', 'Arrow'));
+                                        if (otherSub) otherSub.classList.add('hidden');
+                                        if (otherArrow) otherArrow.classList.remove('rotate-180');
+                                        
+                                        // Remove active state from other toggles if needed
+                                        const otherBtn = document.getElementById(otherId);
+                                        if (otherBtn) otherBtn.classList.remove('bg-blue-50', 'text-blue-600');
+                                    }
+                                });
+                            }
+                            
+                            // Toggle current
+                            sub.classList.toggle('hidden');
+                            if (arrow) arrow.classList.toggle('rotate-180');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
     
     @stack('scripts')
 
@@ -127,6 +272,7 @@
         // --- TOAST MANAGER ---
         function showToast(message, type = 'success', duration = 4000) {
             const container = document.getElementById('globalToastContainer');
+            if(!container) return;
             const toast = document.createElement('div');
             toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border pointer-events-auto transform transition-all duration-300 translate-x-full opacity-0 max-w-sm`;
             
@@ -168,76 +314,84 @@
         }
 
         // --- GLOBAL SYNC MANAGER ---
-        let globalOfflineQueue = JSON.parse(localStorage.getItem('fg_scan_queue') || '[]');
-        let isGlobalSyncing = false;
+        // --- GLOBAL SYNC MANAGER ---
+        if (!window.globalSyncManagerInitialized) {
+            window.globalSyncManagerInitialized = true;
+            window.globalOfflineQueue = JSON.parse(localStorage.getItem('fg_scan_queue') || '[]');
+            window.isGlobalSyncing = false;
 
-        async function syncDataToServer(data) {
-            const response = await fetch('{{ route("finishgood.in.store") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(data)
-            });
-            return await response.json();
-        }
+            window.syncDataToServer = async function(data) {
+                const response = await fetch('{{ route("finishgood.in.store") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            };
 
-        async function processGlobalQueue() {
-            if (isGlobalSyncing || globalOfflineQueue.length === 0 || !navigator.onLine) return;
-            
-            isGlobalSyncing = true;
-            console.log('Global Sync: Starting to process ' + globalOfflineQueue.length + ' items');
-            
-            let successCount = 0;
-            const originalCount = globalOfflineQueue.length;
-
-            while (globalOfflineQueue.length > 0 && navigator.onLine) {
-                const item = globalOfflineQueue[0];
-                try {
-                    const res = await syncDataToServer(item);
-                    if (res.success) {
-                        globalOfflineQueue.shift();
-                        localStorage.setItem('fg_scan_queue', JSON.stringify(globalOfflineQueue));
-                        successCount++;
-                        
-                        // Dispatch event for UI updates in finishgood.in.create if current page
-                        window.dispatchEvent(new CustomEvent('fg-item-synced', { detail: { id: item.id } }));
-                    } else {
-                        console.error('Global Sync: Item failed', res.message);
-                        break; 
+            window.processGlobalQueue = async function() {
+                if (window.isGlobalSyncing || window.globalOfflineQueue.length === 0 || !navigator.onLine) return;
+                
+                window.isGlobalSyncing = true;
+                console.log('Global Sync: Starting to process ' + window.globalOfflineQueue.length + ' items');
+                
+                let successCount = 0;
+                
+                while (window.globalOfflineQueue.length > 0 && navigator.onLine) {
+                    const item = window.globalOfflineQueue[0];
+                    try {
+                        const res = await window.syncDataToServer(item);
+                        if (res.success) {
+                            window.globalOfflineQueue.shift();
+                            localStorage.setItem('fg_scan_queue', JSON.stringify(window.globalOfflineQueue));
+                            successCount++;
+                            
+                            // Dispatch event for UI updates in finishgood.in.create if current page
+                            window.dispatchEvent(new CustomEvent('fg-item-synced', { detail: { id: item.id } }));
+                        } else {
+                            console.error('Global Sync: Item failed', res.message);
+                            break; 
+                        }
+                    } catch (err) {
+                        console.error('Global Sync: Network error');
+                        break;
                     }
-                } catch (err) {
-                    console.error('Global Sync: Network error');
-                    break;
+                    await new Promise(r => setTimeout(r, 500));
                 }
-                await new Promise(r => setTimeout(r, 500));
-            }
 
-            if (successCount > 0) {
-                showToast(`Sinkronisasi Berhasil: ${successCount} data scan terkirim ke server.`, 'success');
-            }
+                if (successCount > 0) {
+                    // Check if showToast is available globally
+                    if (typeof showToast === 'function') {
+                        showToast(`Sinkronisasi Berhasil: ${successCount} data scan terkirim ke server.`, 'success');
+                    } else {
+                        console.log(`Sinkronisasi Berhasil: ${successCount} data scan terkirim ke server.`);
+                    }
+                }
 
-            isGlobalSyncing = false;
-        }
+                window.isGlobalSyncing = false;
+            };
 
-        // Sync Event Listeners
-        window.addEventListener('online', processGlobalQueue);
-        window.addEventListener('load', () => {
-            if (globalOfflineQueue.length > 0) {
-                setTimeout(processGlobalQueue, 2000); // Wait a bit after load
-            }
-        });
-
-        // --- SERVICE WORKER REGISTRATION ---
-        if ('serviceWorker' in navigator) {
+            // Sync Event Listeners
+            window.addEventListener('online', window.processGlobalQueue);
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker: Registered'))
-                    .catch(err => console.log(`Service Worker: Error: ${err}`));
+                if (window.globalOfflineQueue.length > 0) {
+                    setTimeout(window.processGlobalQueue, 2000); // Wait a bit after load
+                }
             });
+
+            // --- SERVICE WORKER REGISTRATION ---
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(reg => console.log('Service Worker: Registered'))
+                        .catch(err => console.log(`Service Worker: Error: ${err}`));
+                });
+            }
         }
     </script>
 </body>

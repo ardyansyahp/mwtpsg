@@ -164,6 +164,7 @@ class FinishGoodController extends Controller
         $validated = $request->validate([
             'part_number' => 'required|string', // Scanner mengirim nomor part, bukan ID
             'lot_number' => 'required|string|max:100',
+            'lot_produksi' => 'nullable|string', // Raw barcode scan
             'qty' => 'required|integer|min:1',
             'customer' => 'nullable|string|max:100',
             
@@ -272,6 +273,7 @@ class FinishGoodController extends Controller
                 $finishGoodIn = TFinishGoodIn::create([
                     'assy_out_id' => null, // Standalone scan, unlinked to assy
                     'lot_number' => $validated['lot_number'],
+                    'lot_produksi' => $validated['lot_produksi'] ?? null,
                     'part_id' => $part->id,
                     'qty' => $validated['qty'],
                     'customer' => $validated['customer'] ?? null,

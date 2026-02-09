@@ -557,7 +557,8 @@ document.addEventListener('DOMContentLoaded', () => {
             no_planning: noPlanning,
             no_mesin: noMesin,
             tanggal_produksi: tanggalProduksi,
-            shift: shift
+            shift: shift,
+            lot_produksi: barcode // Full raw barcode string
         };
     }
 
@@ -633,4 +634,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
-```

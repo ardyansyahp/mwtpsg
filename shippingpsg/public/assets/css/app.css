@@ -43,6 +43,7 @@ body {
 @media (min-width: 1024px) {
     .app-content-area {
         width: calc(100% - 256px);
+        max-width: none;
     }
 }
 
@@ -51,14 +52,14 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     background-color: #f9fafb;
-    padding: 0;
+    padding: 0.5rem 0.75rem;
     position: relative;
     z-index: 1;
 }
 
 @media (min-width: 640px) {
     .app-main-content {
-        padding: 0;
+        padding: 0.5rem 0.75rem;
     }
 }
 

@@ -16,6 +16,8 @@ class SMPart extends Model
     protected $fillable = [
         'nomor_part',
         'nama_part',
+        'min_stock',
+        'max_stock',
         'customer_id',
         'tipe_id',
         'model_part',
@@ -40,6 +42,8 @@ class SMPart extends Model
             'N_Cav1' => 'decimal:3', // Used for netto
             'Runner' => 'decimal:3',
             'Avg_Brutto' => 'decimal:3', // Used for brutto
+            'min_stock' => 'integer',
+            'max_stock' => 'integer',
         ];
     }
 
@@ -122,6 +126,14 @@ class SMPart extends Model
     public function partMaterials()
     {
         return $this->hasMany(SMPartMaterial::class, 'part_id')->orderBy('material_type')->orderBy('urutan');
+    }
+
+    /**
+     * Get the current stock record
+     */
+    public function stockFg()
+    {
+        return $this->hasOne(TStockFG::class, 'part_id');
     }
 }
 

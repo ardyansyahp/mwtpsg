@@ -33,20 +33,24 @@
     let map;
     let markers = {};
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Map (Center Indonesia/Jakarta)
-        map = L.map('map').setView([-6.2088, 106.8456], 10);
+    function initMap() {
+        if (document.getElementById('map') && !map) {
+            // Initialize Map (Center Indonesia/Jakarta)
+            map = L.map('map').setView([-6.2088, 106.8456], 10);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
 
-        // Fetch Initial Data
-        fetchLocations();
+            // Fetch Initial Data
+            fetchLocations();
 
-        // Auto Refresh every 60s
-        setInterval(fetchLocations, 60000);
-    });
+            // Auto Refresh every 60s
+            setInterval(fetchLocations, 60000);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initMap);
 
     async function fetchLocations() {
         try {

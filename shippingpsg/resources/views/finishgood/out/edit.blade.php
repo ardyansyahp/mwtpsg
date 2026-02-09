@@ -185,17 +185,29 @@
     </div>
 </div> <!-- End of .fade-in -->
 
+@push('scripts')
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script>
-    const { createApp, ref } = Vue;
+    function initEditApp() {
+        const appElement = document.querySelector('.fade-in.max-w-4xl');
+        if (!appElement) return;
 
-    createApp({
-        setup() {
-            const showResetModal = ref(false);
-            return { showResetModal };
-        }
-    }).mount('.fade-in');
+        const { createApp, ref } = Vue;
+        createApp({
+            setup() {
+                const showResetModal = ref(false);
+                return { showResetModal };
+            }
+        }).mount(appElement);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEditApp);
+    } else {
+        initEditApp();
+    }
 </script>
+@endpush
 
 <style>
     @keyframes bounce-in {

@@ -338,95 +338,105 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script>
-    const { createApp, ref, reactive } = Vue;
+    function initDispatchApp() {
+        if (!document.getElementById('dispatchApp')) return;
+        const { createApp, ref, reactive } = Vue;
+        
+        createApp({
+            setup() {
+                const modal = reactive({
+                    show: false,
+                    sj: {}
+                });
 
-    createApp({
-        setup() {
-            const modal = reactive({
-                show: false,
-                sj: {}
-            });
+                const form = reactive({
+                    spk_id: null,
+                    driver_id: '',
+                    nomor_plat: ''
+                });
 
-            const form = reactive({
-                spk_id: null,
-                driver_id: '',
-                nomor_plat: ''
-            });
+                const submitting = ref(false);
 
-            const submitting = ref(false);
+                const openModal = (sj) => {
+                    modal.sj = { ...sj };
+                    form.spk_id = sj.id;
+                    form.driver_id = sj.driver_id || '';
+                    form.nomor_plat = sj.nomor_plat || '';
+                    modal.show = true;
+                    document.body.style.overflow = 'hidden';
+                };
 
-            const openModal = (sj) => {
-                modal.sj = { ...sj };
-                form.spk_id = sj.id;
-                form.driver_id = sj.driver_id || '';
-                form.nomor_plat = sj.nomor_plat || '';
-                modal.show = true;
-                document.body.style.overflow = 'hidden';
-            };
+                const closeModal = () => {
+                    modal.show = false;
+                    document.body.style.overflow = 'auto';
+                };
 
-            const closeModal = () => {
-                modal.show = false;
-                document.body.style.overflow = 'auto';
-            };
+                const submitAssignment = async () => {
+                    if(submitting.value) return;
+                    submitting.value = true;
 
-            const submitAssignment = async () => {
-                if(submitting.value) return;
-                submitting.value = true;
-
-                try {
-                    const response = await fetch("{{ route('shipping.dispatch.assign') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(form)
-                    });
-
-                    const result = await response.json();
-
-                    if(result.success) {
-                        // Toast alert or immediate reload
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: 'Penugasan berhasil dikonfirmasi.',
-                            timer: 2000,
-                            showConfirmButton: false,
-                            background: '#F8FAFC',
-                            customClass: {
-                                title: 'font-bold text-gray-900',
-                                popup: 'rounded-xl border-none shadow-xl'
-                            }
-                        }).then(() => {
-                            window.location.reload();
+                    try {
+                        const response = await fetch("{{ route('shipping.dispatch.assign') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(form)
                         });
-                    } else {
-                        throw new Error(result.message);
-                    }
-                } catch (error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Penugasan Gagal',
-                        text: error.message,
-                        background: '#FFF5F5'
-                    });
-                } finally {
-                    submitting.value = false;
-                }
-            };
 
-            return {
-                modal,
-                form,
-                submitting,
-                openModal,
-                closeModal,
-                submitAssignment
-            };
-        }
-    }).mount('#dispatchApp');
+                        const result = await response.json();
+
+                        if(result.success) {
+                            // Toast alert or immediate reload
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: 'Penugasan berhasil dikonfirmasi.',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                background: '#F8FAFC',
+                                customClass: {
+                                    title: 'font-bold text-gray-900',
+                                    popup: 'rounded-xl border-none shadow-xl'
+                                }
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            throw new Error(result.message);
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Penugasan Gagal',
+                            text: error.message,
+                            background: '#FFF5F5'
+                        });
+                    } finally {
+                        submitting.value = false;
+                    }
+                };
+
+                return {
+                    modal,
+                    form,
+                    submitting,
+                    openModal,
+                    closeModal,
+                    submitAssignment
+                };
+            }
+        }).mount('#dispatchApp');
+    }
+
+    // Initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDispatchApp);
+    } else {
+        initDispatchApp();
+    }
 
     function changePerPage(value) {
         const url = new URL(window.location.href);

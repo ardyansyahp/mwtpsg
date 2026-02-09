@@ -4,141 +4,201 @@
 <style>
     .glass-card {
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border: 1px solid #f1f5f9;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        border: 1px solid #e2e8f0;
     }
     .metric-card {
-        border-radius: 10px;
-        padding: 1.25rem;
-        color: white;
+        padding: 1rem;
+        border-radius: 6px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         position: relative;
         overflow: hidden;
-    }
-    .metric-card-icon {
-        position: absolute;
-        right: 15px;
-        bottom: 15px;
-        font-size: 2.5rem;
-        opacity: 0.2;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
     .metric-title {
         font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        margin-bottom: 0.5rem;
+        color: #64748b;
+        margin-bottom: 0.25rem;
     }
     .metric-value {
         font-size: 1.8rem;
         font-weight: 800;
+        color: #0f172a;
         line-height: 1.2;
     }
-    .metric-sub {
-        font-size: 0.65rem;
-        opacity: 0.9;
+    .metric-icon {
+        position: absolute;
+        right: 1rem;
+        bottom: 1rem;
+        font-size: 2.5rem;
+        opacity: 0.1;
+        color: #10b981; /* Default Green */
     }
-    .status-badge {
-        font-size: 0.65rem;
-        padding: 0.2rem 0.6rem;
+    .trend-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 2px 6px;
         border-radius: 4px;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: white;
-        display: inline-block;
-        min-width: 60px;
-        text-align: center;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+    /* Theme Colors for specific cards if needed, but keeping unified green/white per request */
+    /* If user wants accents: */
+    .border-l-4-green { border-left: 4px solid #10b981; }
+    .border-l-4-blue { border-left: 4px solid #3b82f6; }
+    .border-l-4-orange { border-left: 4px solid #f59e0b; }
+    .border-l-4-red { border-left: 4px solid #ef4444; }
+    .active-service-filter {
+        background-color: #1e293b !important; /* slate-800 */
+        color: white !important;
+        font-weight: bold !important;
+    }
+    .active-service-filter span {
+        background-color: white !important;
+    }
+    .active-service-filter i {
+        color: white !important;
     }
 </style>
 @endpush
 
 @section('content')
-<div class="px-6 py-6 space-y-6 bg-slate-50 min-h-screen font-sans">
+<div class="space-y-4 bg-slate-50 min-h-screen font-sans">
     
     {{-- Header & Filters --}}
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-2">
+    <div class="glass-card p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-             <i class="fas fa-truck-loading text-slate-800 text-lg"></i>
-            <h1 class="text-xl font-bold text-slate-800">Delivery Performance</h1>
+             <div class="w-1.5 h-10 bg-emerald-600 rounded-full"></div>
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-truck-loading text-emerald-600"></i> Delivery Performance
+                </h1>
+                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wide">
+                    {{ \Carbon\Carbon::parse(request('month', now()))->isoFormat('MMMM YYYY') }}
+                </p>
+            </div>
         </div>
         
-        <form action="" method="GET" class="flex flex-wrap items-center gap-2">
-            <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+        <form action="" method="GET" class="flex flex-wrap items-center gap-3">
+             <div class="relative group">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
                     <i class="fas fa-search text-xs"></i>
                 </span>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari Part ID/Name/Customer..." 
-                    class="pl-9 pr-4 py-2 w-64 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari Part ID/Name..." 
+                    class="pl-9 pr-4 py-2 w-64 bg-slate-50 border border-slate-200 rounded-md text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all">
             </div>
 
-            <select name="month" class="py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
-                <option value="{{ date('Y-m') }}">Bulan Ini</option>
-                <option value="{{ date('Y-m', strtotime('-1 month')) }}">Bulan Lalu</option>
+            <select name="month" onchange="this.form.submit()" class="py-2 pl-3 pr-8 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
+                 @for($i=0; $i<12; $i++)
+                    @php $m = now()->subMonths($i); @endphp
+                    <option value="{{ $m->format('Y-m') }}" {{ request('month', now()->format('Y-m')) == $m->format('Y-m') ? 'selected' : '' }}>
+                        {{ $m->isoFormat('MMMM YYYY') }}
+                    </option>
+                @endfor
             </select>
 
-             <select name="customer" class="py-2 pl-3 pr-8 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
+             <select name="customer" onchange="this.form.submit()" class="py-2 pl-3 pr-8 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer w-48">
                 <option value="">Semua Customer</option>
-                {{-- Options populated by backend --}}
+                 @foreach($customers as $c)
+                    <option value="{{ $c->id }}" {{ request('customer') == $c->id ? 'selected' : '' }}>{{ $c->nama_perusahaan }}</option>
+                @endforeach
             </select>
             
-            <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-                <i class="fas fa-file-excel"></i> Export
-            </button>
+            <a href="{{ route('shipping.delivery.dashboard.export', request()->all()) }}" target="_blank"
+                class="flex items-center justify-center bg-white border border-slate-200 text-slate-500 p-2.5 rounded-xl hover:bg-slate-50 transition-colors shadow-sm" 
+                title="Export Data">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+            </a>
         </form>
     </div>
 
     {{-- Info Bar --}}
-    <div class="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 flex items-center gap-2 text-sm text-blue-800 mb-6">
+    <div class="bg-emerald-50 border border-emerald-100 rounded-md px-4 py-2.5 flex items-center gap-2 text-xs text-emerald-800">
         <i class="fas fa-info-circle"></i>
-        <span class="font-medium">Periode: {{ now()->startOfMonth()->format('d F Y') }} - {{ now()->format('d F Y') }}</span>
-        <span class="text-blue-300">|</span>
-        <span class="font-medium">Customer: Semua</span>
+        <span class="font-bold">Periode:</span> {{ now()->startOfMonth()->format('d F Y') }} - {{ now()->format('d F Y') }}
+        <span class="text-emerald-300 mx-2">|</span>
+        <span class="font-bold">Customer:</span> {{ $customers->find(request('customer'))?->nama_perusahaan ?? 'Semua' }}
     </div>
 
-    {{-- Metric Cards --}}
+    {{-- 6 Metric Cards Row --}}
     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {{-- Card 1: Purchase Order --}}
-        <div class="metric-card bg-blue-600">
-            <div class="metric-title">PURCHASE ORDER</div>
-            <div class="metric-value">{{ number_format(4880358) }}</div>
-             <i class="fas fa-file-invoice-dollar metric-card-icon"></i>
+        <div class="metric-card border-l-4-blue">
+            <div>
+                <div class="metric-title text-blue-600">PURCHASE ORDER</div>
+                <div class="metric-value">{{ number_format($totalPO) }}</div>
+            </div>
+             <i class="fas fa-file-invoice-dollar metric-icon text-blue-500"></i>
         </div>
 
         {{-- Card 2: Delivery Plan --}}
-        <div class="metric-card bg-emerald-500">
-             <div class="metric-title">DELIVERY PLAN</div>
-            <div class="metric-value">{{ number_format(309324) }}</div>
-             <i class="fas fa-calendar-check metric-card-icon"></i>
+        <div class="metric-card border-l-4-green">
+            <div>
+                 <div class="metric-title text-emerald-600">DELIVERY PLAN (DI)</div>
+                <div class="metric-value">{{ number_format($totalPlan) }}</div>
+            </div>
+             <i class="fas fa-calendar-check metric-icon text-emerald-500"></i>
         </div>
         
         {{-- Card 3: Aktual Delivery --}}
-        <div class="metric-card bg-yellow-600">
-             <div class="metric-title">AKTUAL DELIVERY</div>
-            <div class="metric-value">{{ number_format(73245) }}</div>
-             <i class="fas fa-truck metric-card-icon"></i>
+        <div class="metric-card border-l-4-orange">
+            <div>
+                 <div class="metric-title text-orange-600">AKTUAL DELIVERY</div>
+                <div class="metric-value">{{ number_format($totalActual) }}</div>
+            </div>
+             <i class="fas fa-truck metric-icon text-orange-500"></i>
         </div>
 
         {{-- Card 4: Pending Delivery --}}
-        <div class="metric-card bg-red-600">
-             <div class="metric-title">PENDING DELIVERY</div>
-            <div class="metric-value">{{ number_format(236079) }}</div>
-             <i class="fas fa-clock metric-card-icon"></i>
+        <div class="metric-card border-l-4-red">
+            <div>
+                 <div class="metric-title text-red-600">PENDING DELIVERY</div>
+                <div class="metric-value {{ $pendingDelivery > 0 ? 'text-red-600' : '' }}">{{ number_format($pendingDelivery) }}</div>
+            </div>
+             <i class="fas fa-clock metric-icon text-red-500"></i>
         </div>
 
         {{-- Card 5: Service Rate By PO --}}
-        <div class="metric-card bg-purple-600">
-             <div class="metric-title">SERVICE RATE BY PO</div>
-            <div class="metric-value">1.5%</div>
-            <div class="metric-sub text-purple-200">↓ 98.5% dari target</div>
-             <i class="fas fa-chart-line metric-card-icon"></i>
+        <div class="metric-card bg-slate-800 text-white border-none">
+            <div>
+                 <div class="metric-title text-slate-400">SERVICE RATE (PO)</div>
+                 <div class="flex items-end gap-2">
+                    <div class="metric-value text-white">{{ number_format($serviceRatePO, 1) }}%</div>
+                    @if($serviceRatePO < 100)
+                        <span class="text-[10px] text-red-400 mb-1.5"><i class="fas fa-arrow-down"></i></span>
+                    @endif
+                 </div>
+                 <div class="w-full bg-slate-700 h-1.5 mt-2 rounded-full overflow-hidden">
+                     <div class="bg-emerald-500 h-full" style="width: {{ min($serviceRatePO, 100) }}%"></div>
+                 </div>
+            </div>
         </div>
 
-        {{-- Card 6: Service Rate By Plan --}}
-        <div class="metric-card bg-indigo-600">
-             <div class="metric-title">SERVICE RATE BY DAILY PLAN</div>
-            <div class="metric-value">23.7%</div>
-             <div class="metric-sub text-indigo-200">↓ 76.3% dari target</div>
-             <i class="fas fa-chart-line metric-card-icon"></i>
+         {{-- Card 6: Service Rate By Plan --}}
+        <div class="metric-card bg-emerald-600 text-white border-none">
+             <div>
+                 <div class="metric-title text-emerald-100">SERVICE RATE (DI)</div>
+                <div class="flex items-end gap-2">
+                    <div class="metric-value text-white">{{ number_format($serviceRatePlan, 1) }}%</div>
+                </div>
+                 <div class="w-full bg-emerald-800 h-1.5 mt-2 rounded-full overflow-hidden">
+                     <div class="bg-white h-full" style="width: {{ min($serviceRatePlan, 100) }}%"></div>
+                 </div>
+            </div>
         </div>
     </div>
 
@@ -146,11 +206,11 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {{-- Monthly Trend --}}
         <div class="glass-card p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2">
-                    <i class="fas fa-chart-line text-slate-400"></i> Monthly Service Rate Trend
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-slate-700 text-xs uppercase flex items-center gap-2">
+                    <i class="fas fa-chart-line text-emerald-500"></i> Monthly Service Rate Trend
                 </h3>
-                <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded">by PO</span>
+                <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold">BY PO</span>
             </div>
             <div class="relative h-64 w-full">
                 <canvas id="chartMonthTrend"></canvas>
@@ -159,11 +219,11 @@
 
         {{-- Daily Trend --}}
         <div class="glass-card p-6">
-             <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2">
-                    <i class="fas fa-chart-bar text-slate-400"></i> Daily Service Rate Trend
+             <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-slate-700 text-xs uppercase flex items-center gap-2">
+                    <i class="fas fa-chart-bar text-emerald-500"></i> Daily Service Rate Trend
                 </h3>
-                <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded">by Daily Schedule Only</span>
+                <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold">BY DAILY SCHEDULE</span>
             </div>
             <div class="relative h-64 w-full">
                 <canvas id="chartDailyTrend"></canvas>
@@ -171,89 +231,80 @@
         </div>
     </div>
 
-    {{-- Service Filter Bar --}}
+    {{-- Filter Bar --}}
     <div class="glass-card px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-2 w-full md:w-auto">
             <i class="fas fa-filter text-slate-400 text-xs"></i>
-            <span class="text-xs font-bold text-slate-600">Service Rate by:</span>
-            <select class="text-xs font-semibold text-slate-700 bg-slate-50 border-none rounded focus:ring-0 cursor-pointer py-1">
-                <option>Purchase Order (PO)</option>
-                <option>Daily Plan</option>
-            </select>
+            <span class="text-xs font-bold text-slate-600 uppercase">Service Rate by:</span>
+            <div class="flex bg-slate-100 rounded p-0.5">
+                <button class="px-3 py-1 bg-white shadow-sm rounded-sm text-[10px] font-bold text-slate-700">Purchase Order (PO)</button>
+            </div>
         </div>
         
-        <div class="flex bg-white border border-slate-200 rounded-md overflow-hidden text-[10px] font-bold w-full md:w-auto">
-            <button class="bg-blue-900 text-white px-4 py-2">ALL DELIVERY</button>
-            <button class="bg-white text-slate-500 hover:bg-slate-50 px-4 py-2 border-l border-slate-100">POOR (<90%)</button>
-            <button class="bg-white text-slate-500 hover:bg-slate-50 px-4 py-2 border-l border-slate-100">GOOD (90-99%)</button>
-            <button class="bg-white text-slate-500 hover:bg-slate-50 px-4 py-2 border-l border-slate-100">EXCELLENT (100%)</button>
-            <button class="bg-white text-slate-500 hover:bg-slate-50 px-4 py-2 border-l border-slate-100">OVER (>100%)</button>
+        <div class="flex items-stretch gap-0 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm w-full md:w-auto">
+            <button type="button" onclick="filterByServiceRate('ALL')" class="service-filter flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[9px] font-bold text-gray-600 bg-white hover:bg-gray-50 transition-colors active-service-filter border-r border-gray-200">
+                <i class="fas fa-layer-group"></i> ALL DELIVERY
+            </button>
+            <button type="button" onclick="filterByServiceRate('POOR')" class="service-filter flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[9px] font-semibold text-gray-600 bg-white hover:bg-gray-50 transition-colors border-r border-gray-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> POOR (&lt;90%)
+            </button>
+            <button type="button" onclick="filterByServiceRate('GOOD')" class="service-filter flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[9px] font-semibold text-gray-600 bg-white hover:bg-gray-50 transition-colors border-r border-gray-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> GOOD (90-99%)
+            </button>
+            <button type="button" onclick="filterByServiceRate('EXCELLENT')" class="service-filter flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[9px] font-semibold text-gray-600 bg-white hover:bg-gray-50 transition-colors">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> EXCELLENT (100%)
+            </button>
         </div>
     </div>
 
     {{-- Detailed Table --}}
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-extrabold uppercase tracking-widest">
-                        <th class="px-4 py-3">Part Name</th>
-                        <th class="px-4 py-3">Part Number</th>
-                        <th class="px-4 py-3">Type</th>
-                        <th class="px-4 py-3 text-center">Customer</th>
-                        <th class="px-4 py-3 text-right">PO</th>
-                        <th class="px-4 py-3 text-right">DI</th>
-                        <th class="px-4 py-3 text-right text-blue-600">Actual Del...</th>
-                        <th class="px-4 py-3 text-right">Service Rate</th>
-                        <th class="px-4 py-3 text-center">Status</th>
+                        <th class="px-6 py-4">Part Name</th>
+                        <th class="px-6 py-4">Part Number</th>
+                        <th class="px-6 py-4">Type</th>
+                        <th class="px-6 py-4">Customer</th>
+                        <th class="px-6 py-4 text-right">PO (Month)</th>
+                        <th class="px-6 py-4 text-right">DI (Plan)</th>
+                        <th class="px-6 py-4 text-right text-emerald-600">Actual Del...</th>
+                        <th class="px-6 py-4 text-right">Service Rate</th>
+                        <th class="px-6 py-4 text-center">Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                    {{-- Mock Data Rows matching image --}}
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-4 py-3 font-bold text-slate-800">HOUSING SUB ASSY</td>
-                        <td class="px-4 py-3">90-AD01BSY</td>
-                        <td class="px-4 py-3">K0JA</td>
-                        <td class="px-4 py-3 text-center">AJI</td>
-                        <td class="px-4 py-3 text-right">9,814</td>
-                        <td class="px-4 py-3 text-right">0</td>
-                        <td class="px-4 py-3 text-right text-blue-600 font-bold">504</td>
-                        <td class="px-4 py-3 text-right">5.1%</td>
-                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-600">POOR</span></td>
+                    @forelse($performanceData as $item)
+                        @php
+                            $rate = $item['rate'];
+                            $status = $rate >= 90 ? 'GOOD' : 'POOR';
+                            $statusClass = $rate >= 90 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+                            if($rate >= 100) {
+                                $status = 'EXCELLENT';
+                                $statusClass = 'bg-blue-100 text-blue-700';
+                            }
+                        @endphp
+                        <tr class="hover:bg-slate-50 transition-colors delivery-row" data-status="{{ $status }}">
+                        <td class="px-6 py-3 font-bold text-slate-800">{{ $item['part_name'] }}</td>
+                        <td class="px-6 py-3 font-mono text-slate-500">{{ $item['part_number'] }}</td>
+                        <td class="px-6 py-3">{{ $item['model'] }}</td>
+                        <td class="px-6 py-3 font-bold">{{ $item['customer_name'] }}</td>
+                        <td class="px-6 py-3 text-right text-slate-500">{{ number_format($item['po']) }}</td>
+                        <td class="px-6 py-3 text-right font-bold">{{ number_format($item['plan']) }}</td>
+                        <td class="px-6 py-3 text-right text-emerald-600 font-extrabold">{{ number_format($item['actual']) }}</td>
+                        <td class="px-6 py-3 text-right font-mono">{{ number_format($rate, 1) }}%</td>
+                        <td class="px-6 py-3 text-center">
+                            <span class="inline-block px-2 py-1 rounded text-[10px] font-bold {{ $statusClass }}">
+                                {{ $status }}
+                            </span>
+                        </td>
                     </tr>
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-4 py-3 font-bold text-slate-800">HOUSING RH</td>
-                        <td class="px-4 py-3">11-0G43BV1</td>
-                        <td class="px-4 py-3">D06A</td>
-                        <td class="px-4 py-3 text-center">AJI</td>
-                        <td class="px-4 py-3 text-right">140</td>
-                        <td class="px-4 py-3 text-right">0</td>
-                        <td class="px-4 py-3 text-right text-blue-600 font-bold">10</td>
-                        <td class="px-4 py-3 text-right">7.1%</td>
-                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-600">POOR</span></td>
+                    @empty
+                    <tr>
+                         <td colspan="9" class="px-6 py-8 text-center text-slate-400">Tidak ada data untuk periode ini</td>
                     </tr>
-                     <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-4 py-3 font-bold text-slate-800">HOUSING LH</td>
-                        <td class="px-4 py-3">11-0G44BV1</td>
-                        <td class="px-4 py-3">D06A</td>
-                        <td class="px-4 py-3 text-center">AJI</td>
-                        <td class="px-4 py-3 text-right">140</td>
-                        <td class="px-4 py-3 text-right">0</td>
-                        <td class="px-4 py-3 text-right text-blue-600 font-bold">0</td>
-                        <td class="px-4 py-3 text-right">0.0%</td>
-                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-600">POOR</span></td>
-                    </tr>
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-4 py-3 font-bold text-slate-800">REFLECTOR RH</td>
-                        <td class="px-4 py-3">11-0G43RV1I</td>
-                        <td class="px-4 py-3">D06A</td>
-                        <td class="px-4 py-3 text-center">AJI</td>
-                        <td class="px-4 py-3 text-right">220</td>
-                        <td class="px-4 py-3 text-right">0</td>
-                        <td class="px-4 py-3 text-right text-blue-600 font-bold">0</td>
-                        <td class="px-4 py-3 text-right">0.0%</td>
-                        <td class="px-4 py-3 text-center"><span class="status-badge bg-red-600">POOR</span></td>
-                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -265,31 +316,36 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#94a3b8';
     
     // --- Chart 1: Monthly Trend ---
     new Chart(document.getElementById('chartMonthTrend'), {
         type: 'line',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+            labels: @json($monthlyLabels),
             datasets: [
                 {
                     label: 'Target (100%)',
                     data: Array(12).fill(100),
                     borderColor: '#10b981', // Emerald 500
-                    borderWidth: 2,
-                    borderDash: [5, 5],
+                    borderWidth: 1.5,
+                    borderDash: [4, 4],
                     pointRadius: 0,
-                    fill: false
+                    fill: false,
+                    order: 0
                 },
                 {
-                    label: 'Service Rate (by PO)',
-                    data: [2, null, null, null, null, null, null, null, null, null, null, null], // Mock data point at Jan
+                    label: 'Service Rate',
+                    data: @json($monthlyRate),
                     borderColor: '#3b82f6', // Blue 500
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
-                    pointBackgroundColor: '#3b82f6',
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3b82f6',
+                    pointBorderWidth: 2,
                     pointRadius: 4,
-                    fill: false
+                    fill: true,
+                    tension: 0.3
                 }
             ]
         },
@@ -300,7 +356,7 @@
             scales: {
                 y: { 
                     beginAtZero: true, 
-                    max: 110,
+                    max: 120,
                     ticks: { callback: function(value) { return value + "%" }, stepSize: 20, font: {size: 10} },
                     grid: { color: '#f1f5f9' }
                 },
@@ -310,37 +366,33 @@
     });
 
     // --- Chart 2: Daily Trend ---
-    // Generate days for Jan (31)
-    const days = Array.from({length: 31}, (_, i) => i + 1);
-    const dailyData = Array(31).fill(null);
-    dailyData[5] = 100; dailyData[6] = 100; dailyData[7] = 100; dailyData[8] = 100; // Mock full bars
-    dailyData[11] = 5; // Mock small bar (Sun)
-
     new Chart(document.getElementById('chartDailyTrend'), {
         type: 'bar',
         data: {
-            labels: days,
+            labels: @json($daysLabel),
             datasets: [
                 {
                     type: 'line',
                     label: 'Target (100%)',
-                    data: Array(31).fill(100),
+                    data: Array({{ count($daysLabel) }}).fill(100),
                     borderColor: '#10b981',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointRadius: 0
+                    borderWidth: 1.5,
+                    borderDash: [4, 4],
+                    pointRadius: 0,
+                    order: 0
                 },
                 {
                     label: 'Service Rate',
-                    data: dailyData,
+                    data: @json($chartRate),
                     backgroundColor: function(context) {
                         const val = context.raw;
-                        if(val >= 90) return '#34d399'; // Emerald
-                        if(val < 90) return '#f87171'; // Red
+                        if(val >= 90) return '#10b981'; // Emerald
+                        if(val < 90) return '#ef4444'; // Red
                         return '#cbd5e1';
                     },
-                    borderRadius: 4,
-                    barThickness: 6
+                    borderRadius: 2,
+                    barPercentage: 0.7,
+                    order: 1
                 }
             ]
         },
@@ -351,18 +403,46 @@
             scales: {
                 y: { 
                     beginAtZero: true, 
-                    max: 110,
+                    max: 120,
                     ticks: { callback: function(value) { return value + "%" }, stepSize: 20, font: {size: 10} },
                     grid: { color: '#f1f5f9' }
                 },
                 x: { 
                     grid: { display: false }, 
-                    ticks: { font: {size: 9}, maxRotation: 0, autoSkip: false },
-                    title: { display: true, text: 'Tanggal (Januari 2026)', font: {size: 10} }
+                    ticks: { font: {size: 9}, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 },
+                    title: { display: true, text: 'Tanggal', font: {size: 10} }
                 }
             }
         }
     });
 
+    function filterByServiceRate(status) {
+        // Remove active class from all filters
+        document.querySelectorAll('.service-filter').forEach(btn => {
+            btn.classList.remove('active-service-filter');
+        });
+        
+        // Add active class to clicked filter
+        event.target.closest('.service-filter').classList.add('active-service-filter');
+        
+        // Get all delivery rows
+        const rows = document.querySelectorAll('.delivery-row');
+        
+        if (status === 'ALL') {
+            // Show all rows
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+        } else {
+            // Filter by status
+            rows.forEach(row => {
+                if (row.dataset.status === status) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+    }
 </script>
 @endpush

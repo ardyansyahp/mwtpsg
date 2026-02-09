@@ -14,6 +14,7 @@ class TFinishGoodIn extends Model
     protected $fillable = [
         'assy_out_id',
         'lot_number',
+        'lot_produksi',
         'no_planning',
         'mesin_id', // Changed from no_mesin
         'tanggal_produksi',

@@ -5,8 +5,8 @@
     {{-- Header --}}
     <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">📤 Dashboard Finish Good Out</h1>
-            <p class="text-gray-600 mt-1">Monitoring hasil scan keluar (Pengiriman) per periode</p>
+            <h1 class="text-xl font-bold text-gray-900 leading-none">📤 Dashboard Finish Good Out</h1>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Monitoring hasil scan keluar (Pengiriman) per periode</p>
         </div>
         
         {{-- Filter & Auto-Refresh Section --}}

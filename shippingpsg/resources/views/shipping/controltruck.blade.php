@@ -54,13 +54,12 @@
 </style>
 <div id="app" v-cloak :class="['flex flex-col bg-white h-full', isFullscreen ? '' : 'shadow-sm rounded-lg overflow-hidden border border-gray-200']">
     {{-- Header Section --}}
-    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50" v-if="!isFullscreen">
+    <div class="px-6 py-3 border-b border-gray-200 bg-gray-50/50" v-if="!isFullscreen">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <span>🚚</span> Control Truck
                 </h1>
-                <p class="text-gray-500 text-sm mt-1">Monitoring jadwal dan status truck</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-3">
@@ -154,7 +153,7 @@
     {{-- Normal Table Container --}}
     <div v-else class="relative bg-white flex-1">
          <div class="w-full overflow-auto custom-scrollbar" 
-              style="max-height: calc(100vh - 250px); min-height: 500px;"
+              style="max-height: calc(100vh - 200px); min-height: 650px;"
               ref="tableContainer">
             <div id="tableWrapper" class="min-w-max">
                 @include('shipping.partials.controltruck-table')
