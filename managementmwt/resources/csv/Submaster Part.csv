@@ -1,0 +1,128 @@
+﻿NOMORT PART,NAMA PART,TIPE PART,CUSTOMER,MODEL PART,PROSES,STATUS,QTY PACKING BOX
+1141A-K1Z -N200-DL,"COVER ASSY,ENG TOP",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+19120-K2S -N000,"BASE ASSY,RADIATOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+19150-K2S -N000,"COVER COMP,RADIATOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+5320AK1A N101INB0,"COVER,HANDLE RR SET MBNH-1",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+6430A-K1A -N800-DL,"COVER,FR TOP ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,100
+6433A-K1A -N800-DL,"BOX ASSY,BATTERY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+81145-K1A -N800,"LID ASSY,INNER POCKET",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+8114A-K1A -N800-DL,"COVER,INNER LOWER SET",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+81255-K1A -N800,"COVER,LUGGAGE BOX",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+83650-K1A -N801-00-1V,"SET ILLUS,RR CENTER COVER TYPE 1",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,100
+1757A-K1A -N800-DL-02,"COVER ASSY,FUEL TANK TYPE 2",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+8132A-K0W -H001-DL,"BOX,BATTERY ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+19150-K1Z -NA01,"COVER COMP,RADIATOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+19150-K1N -V002,"COVER COMP,RADIATOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+64303-K3V -N000,"GARNISH,FR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+6432A-K2S -N000-DL,"GARNISH,R FR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+6442A-K2S -N000-DL,"GARNISH,L FR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+81136-K2S -N001,"BOX INNER, UPPER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+8113A-K2F -ND00-DL,"POCKET, R INNER ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+8113B-K2F -NC00-DL,"POCKET, L INNER ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+81145-K0J -N602,"LID ASSY,INNER POCKET",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+8114B-K0J -N600-DL,COVER INNER ASSY,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+1757A-K2F -NC00-DL,"COVER ASSY,FUEL TANK",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+1757BK2S N000DL02,"COVER, FUEL TANK ASSY SET TYPE 2",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+6432A-K2F -NC00-DL,BOX BATTERY ASSY,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+6433A-K0J -N004-IN,"BOX ASSY,BATTERY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+64340-K2F -NC00,"COVER,UNDER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+81145-K59 -A700,"LID,SMART EMERGENCY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,100
+64320-K2V -N301,"GARNISH,R FR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,100
+64420-K2V -N301,"GARNISH,L FR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,100
+8114B-K2V -N302-DL,COVER INNER LOWER ASSY,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+17575-K59 -A700,"COVER, FUEL TANK",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+5320C-K2V -N300-DL,COVER HANDLE RR ASSY,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+17575-K1A -N800,"COVER,FUEL TANK",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+1757A-K2S -M100-DL,"COVER, FUEL TANK ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+64302-K1A -C300,"COVER,FR TOP",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,100
+64320-K1A -N800,"BOX COMP,BATTERY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+64331-K3N -N001,"COVER,UNDER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+80102-K3N -N000,"COVER,RR CENTER LOWER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+1757A-K2V -N300-DL,"COVER, FUEL TANK ASSY TYPE 2",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+50340-K64 -NA00,BOX D,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+6426C-K64 -NP00-DL,PANEL METER ASSY,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+1752A-K1Z -N000-IN,"TRAY,FUEL ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+64315-K1Y -DC01,"MAT R,FR FLOOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+64316-K1Y -DC01,"MAT L,FR FLOOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+64325-K1Y -DC01,"MAT R,RR FLOOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+64326-K1Y -DC01,"MAT L,RR FLOOR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+6433A-K1Z -NA01-DL,"PANEL,FR METER ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+8011AK1Z NA00DL1V,"COVER,RR CENTER, ASSY TYPE 1",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+8132A-K1Z -NA00-DL,"BOX,BATTERY ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+64521-K1Y -DC00,"COVER,FR LOWER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+1757A-K1A -M300-DL,COVER ASSY FUEL TANK,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+64224-K64 -NP00,"PANEL,METER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+64225-K64 -NP00,"COVER,METER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+81141-K1A -N800,"COVER,INNER LOWER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+8113A-K2F -NC00-DL,"POCKET, R INNER ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+53206-GJR -N001,"COVER,HANDLE RR",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+64220-K03 -N300,"BRKT,FR TOP COVER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,50
+6431A-GJR -N001-DL,"CASE,BATTERY ASSY",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+64370-GJR -N001,"COVER,R FR SIDE",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+64380-GJR -N001,"COVER,L FR SIDE",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,20
+81131-GJR -N001,"COVER,INNER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+83750-GJR -N001,"COVER,RR CENTER LOWER",-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,10
+64350-K41 -N000,COVER CENTER,-,"Astra Honda Motor, PT",Reguler,Inject,AKTIF,25
+76111-80K00,"TRIM,FRONT PILLER,R",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76161-80K00,"TRIM,FRONT PILLER,L",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76110-60K00,"TRIM ASSY,FRONT PILLAR,R",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76160-60K00,"TRIM ASSY,FRONT PILLAR,L",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76221-60K10,"TRIM,REAR PILLAR UPPER,R",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76271-60K10,"TRIM,REAR PILLAR UPPER,L",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76220-60K10,"TRIM ASSY,REAR PILLAR UPPER,R",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76270-60K10,"TRIM ASSY,REAR PILLAR UPPER,L",YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76230-60K00-6GS,TRIM COMP BACK PILLAR UPR RH,YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76280-60K00-6GS,TRIM COMP BACK PILLAR UPR LH,YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76230-60K10-6GS,TRIM COMP BACK PILLAR UPR RH,YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+76280-60K10-6GS,TRIM COMP BACK PILLAR UPR LH,YLOII,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD36-PK003.1,PLATE RR DOOR SCUFF RH DG F/T,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD36-PK004.1,PLATE RR DOOR SCUFF LH DG F/T,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD36-PK005.1,PLATE RR DOOR SCUFF RH DG S/T,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD36-PK006.1,PLATE RR DOOR SCUFF LH DG S/T,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD66-PK003.0,PLATE RR DOOR SCUFF RH F/T RT45,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD66-PK004.0,PLATE RR DOOR SCUFF LH F/T RT45,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD66-PK006.0,PLATE RR DOOR SCUFF RH DG RT45 S/T,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+A-DHD66-PK007.0,PLATE RR DOOR SCUFF LH DG RT45 S/T,DO1N,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,24
+62415-0K010,"BOARD, CTR PILLAR GARNISH, RH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+62416-0K010,"BOARD, CTR PILLAR GARNISH, LH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+62411-0K090,"GARNISH, CTR PILLAR, RH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+62412-0K090,"GARNISH, CTR PILLAR, LH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+67937-0K010,"GARNISH, BACK DOOR SIDE, RH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+67938-0K010,"GARNISH, BACK DOOR SIDE, LH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+67937-0K010-A,"GARNISH, BACK DOOR SIDE, RH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+67938-0K010-A,"GARNISH, BACK DOOR SIDE, LH",660A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+74211-BZ010-H,"INSERT, DOOR ARM FR RH",D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,10
+74212-BZ010-H,"INSERT, DOOR ARM FR LH",D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,10
+74213-BZ010-H,"INSERT, DOOR ARM RR RH",D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,10
+74214-BZ010-H,"INSERT, DOOR ARM RR LH",D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,10
+74293-BZ020-H,PLATE DOOR ARMREST NO.1,D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,15
+74294-BZ020-H,PLATE DOOR ARMREST NO.2,D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,15
+58952-BZ030- -4,"DOOR, CONSOLE COMPARTMENT, INNER",D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,16
+58951-BZ030- -4,"DOOR, CONSOLE COMPARTMENT, OUTER",D26A,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,16
+63317-VT010,"RETAINER, ROOF HEADLINING",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,28
+63317-VT030,"RETAINER, ROOF HEADLINING",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,28
+63365-VT010,"PLATE, ROOF HEADLINING SET, NO.1 RH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,96
+63366-VT010,"PLATE, ROOF HEADLINING SET, NO.1 LH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,96
+63381-VT031,"RETAINER, ROOF HEADLINING TRIM FR RH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+63382-VT011,"RETAINER, ROOF HEADLINING TRIM FR LH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+63383-VT031,"RETAINER, ROOF HEADLINING TRIM RR RH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+63384-VT011,"RETAINER, ROOF HEADLINING TRIM RR LH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,12
+63385-VT010,"RETAINER, ROOF HEADLINING TRIM SIDE RH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,40
+63386-VT010,"RETAINER, ROOF HEADLINING TRIM SIDE LH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,40
+88589-VT010,RETAINER COOLAR,560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,96
+63381-VT011,"RETAINER, ROOF HEADLINING TRIM FR",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,60
+63383-VT011,"RETAINER, ROOF HEADLINING TRIM RR",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,60
+58957-VT010,"MOLDING, CONS COMP DOOR RHD",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+58957-VT020,"MOLDING, CONS COMP DOOR LHD",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+74251-VT010-A,"INSERT, RR DOOR ARMREST RH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+74252-VT010-A,"INSERT, RR DOOR ARMREST LH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+74211-VT010-A,"INSERT, FR DOOR ARMREST, RH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+74212-VT010-A,"INSERT, FR DOOR ARMREST, LH",560B,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-00-006,REINFORCE FR END,5J45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-00-009,REINFORCE RR END,5J45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-00-008,REINFORCE SIDE LH,5J45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-00-007,REINFORCE SIDE RH,5J45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-04-001,REINFORCE FR END,5H45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-04-004,REINFORCE RR END,5H45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-04-002,REINFORCE SIDE LH,5H45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18
+REI-04-003,REINFORCE SIDE RH,5H45,Inoac Polytechno Indonesia,Reguler,Inject,AKTIF,18

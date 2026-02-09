@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Ignore sub-app directories
+    RewriteCond %{REQUEST_URI} !^/supplierpsg
+    RewriteCond %{REQUEST_URI} !^/shippingpsg
+    RewriteCond %{REQUEST_URI} !^/managementmwt
+
+    # Handle Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
