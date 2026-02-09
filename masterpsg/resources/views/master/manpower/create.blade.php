@@ -15,8 +15,8 @@
             <span class="font-medium">Kembali</span>
         </a>
 
-        <h2 class="text-3xl font-bold text-gray-800">Tambah Manpower</h2>
-        <p class="text-gray-600 mt-1">Tambah data manpower baru</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Tambah Manpower</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Tambah data manpower baru</p>
     </div>
 
     {{-- Form --}}
@@ -87,6 +87,40 @@
                         <option value="">Pilih Departemen terlebih dahulu</option>
                     </select>
                 </div>
+
+                {{-- User Account Section --}}
+                <div class="col-span-1 md:col-span-2 mt-4">
+                    <h3 class="text-sm font-semibold text-gray-800 border-b pb-2 mb-4">Akun Pengguna (Optional)</h3>
+                </div>
+
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700 mb-2">
+                        Role
+                    </label>
+                    <select
+                        id="role"
+                        name="role"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                        <option value="0">User (Operator/Regular)</option>
+                        <option value="2">Management</option>
+                        <option value="1">Superadmin</option>
+                    </select>
+                </div>
+
+                <div id="password-container" class="hidden">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                        Password <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        minlength="4"
+                        placeholder="Minimal 4 karakter (Wajib untuk Role Superadmin/Management)"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                </div>
             </div>
 
             <div class="flex items-center gap-4 pt-4">
@@ -131,6 +165,22 @@ document.getElementById('departemen').addEventListener('change', function() {
     } else {
         bagianSelect.disabled = true;
         bagianSelect.innerHTML = '<option value="">Pilih Departemen terlebih dahulu</option>';
+    }
+});
+
+// Role & Password Interaction
+document.getElementById('role').addEventListener('change', function() {
+    const role = this.value;
+    const passContainer = document.getElementById('password-container');
+    const passInput = document.getElementById('password');
+    
+    if (role === '1' || role === '2') {
+        passContainer.classList.remove('hidden');
+        passInput.setAttribute('required', 'required');
+    } else {
+        passContainer.classList.add('hidden');
+        passInput.removeAttribute('required');
+        passInput.value = ''; // Reset password
     }
 });
 

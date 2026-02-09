@@ -35,6 +35,19 @@
                 <p class="text-sm text-gray-500 mt-1">For regular users, use their mp_id from m_manpower table</p>
             </div>
 
+            <div class="mb-4">
+                <label for="role" class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <select name="role" id="role" class="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm transition-colors cursor-pointer hover:border-blue-400">
+                    <option value="0" {{ old('role') == '0' ? 'selected' : '' }}>User (Operator)</option>
+                    <option value="2" {{ old('role') == '2' ? 'selected' : '' }}>Management</option>
+                    <option value="1" {{ old('role') == '1' ? 'selected' : '' }}>Superadmin</option>
+                </select>
+                <p class="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                    <i class="fas fa-info-circle text-blue-400"></i>
+                    <span>Management role automatically gets "User Management" permissions.</span>
+                </p>
+            </div>
+
             <div class="mb-6">
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password (Optional)</label>
                 <input type="password" name="password" id="password"

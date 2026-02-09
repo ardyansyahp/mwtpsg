@@ -4,10 +4,9 @@
 <div class="fade-in">
     {{-- Header & Toolbar --}}
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        {{-- Title --}}
-        <div class="text-2xl font-bold text-gray-800">
-            <h2>Master Manpower</h2>
-            <p class="text-sm text-gray-500 font-normal">Kelola data manpower</p>
+        <div class="flex flex-col">
+            <h2 class="text-xl font-bold text-gray-900 leading-none">Master Manpower</h2>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Kelola data manpower</p>
         </div>
 
         {{-- Actions --}}
@@ -109,11 +108,11 @@
                             <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                        <th>{!! sortLink('nik', 'NIK') !!}</th>
-                        <th>{!! sortLink('nama', 'Nama') !!}</th>
-                        <th>{!! sortLink('departemen', 'Departemen') !!}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{!! sortLink('nik', 'NIK') !!}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{!! sortLink('nama', 'Nama') !!}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{!! sortLink('departemen', 'Departemen') !!}</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code</th>
-                        <th>{!! sortLink('status', 'Status') !!}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{!! sortLink('status', 'Status') !!}</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>

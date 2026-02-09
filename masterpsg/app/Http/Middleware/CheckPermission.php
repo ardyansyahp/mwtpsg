@@ -5,38 +5,39 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Models\User;
 
 class CheckPermission
 {
     /**
      * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  $permission  The required permission slug
+     * Middleware untuk cek permission user (support multi-project)
      */
     public function handle(Request $request, Closure $next, string $permission): Response
     {
-        // Check if user is logged in
-        if (!session()->has('user_id')) {
-            return redirect('/login')->with('error', 'Please login to continue');
+        // Get user from session
+        $userId = session('user_id');
+        
+        if (!$userId) {
+            return redirect()->away('http://mwtpsg.test/login');
         }
-
-        $user = \App\Models\User::where('user_id', session('user_id'))->first();
-
+        
+        $user = User::find($userId);
+        
         if (!$user) {
-            return redirect('/login')->with('error', 'User not found');
+            return redirect()->away('http://mwtpsg.test/login');
         }
-
-        // Superadmin has all permissions
-        if ($user->isSuperadmin()) {
+        
+        // Superadmin bisa akses semua
+        if ($user->is_superadmin) {
             return $next($request);
         }
-
-        // Check if user has the required permission
+        
+        // Check permission
         if (!$user->hasPermission($permission)) {
-            abort(403, 'You do not have permission to access this page');
+            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
-
+        
         return $next($request);
     }
 }

@@ -13,8 +13,8 @@
             </svg>
             <span class="font-medium">Kembali</span>
         </a>
-        <h2 class="text-3xl font-bold text-gray-800">Import Master Mesin</h2>
-        <p class="text-gray-600 mt-1">Import data mesin dari file CSV dengan mapping kolom dinamis</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Import Master Mesin</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Import data mesin dari file CSV dengan mapping kolom dinamis</p>
     </div>
 
     @if(session('success'))

@@ -8,6 +8,18 @@ use Illuminate\Http\Request;
 
 class ManpowerController extends Controller
 {
+    private function columnToIndex($col)
+    {
+        if (empty($col)) return -1;
+        $col = strtoupper(trim($col));
+        $len = strlen($col);
+        $num = 0;
+        for ($i = 0; $i < $len; $i++) {
+            $num = $num * 26 + ord($col[$i]) - 0x40;
+        }
+        return $num - 1;
+    }
+
     private function buildManpowerQrcode(MManpower $m): string
     {
         $baseSeed = strtoupper(trim($m->mp_id ?: ($m->nik ?: (string) $m->id)));
@@ -98,7 +110,18 @@ class ManpowerController extends Controller
             'nama' => 'required|string|max:255',
             'departemen' => 'nullable|string|max:100',
             'bagian' => 'nullable|string|max:100',
+            'role' => 'nullable|in:0,1,2',
+            'password' => 'nullable|string|min:4'
         ]);
+
+        // Validate Password Requirement for High Roles
+        $role = (int) ($request->role ?? 0);
+        if (in_array($role, [1, 2]) && empty($request->password)) {
+             return response()->json([
+                'success' => false,
+                'message' => 'Password wajib diisi untuk Role Superadmin atau Management'
+            ], 422);
+        }
 
         // Generate ID: Nama|NIK
         $generatedId = trim($validated['nama']) . '|' . trim($validated['nik'] ?? '');
@@ -109,9 +132,30 @@ class ManpowerController extends Controller
 
         $manpower = MManpower::create($validated);
 
+        // Sync with User Account
+        $user = \App\Models\User::firstOrCreate(
+            ['user_id' => $manpower->mp_id],
+            ['role' => 0]
+        );
+        
+        $user->role = $role;
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->password);
+        }
+        $user->save();
+        
+        // Auto-assign Management Permissions if Role 2
+        if ($role === 2) {
+             $managementPerms = \App\Models\Permission::whereIn('slug', [
+                'superadmin.users.index', 'superadmin.users.create', 'superadmin.users.destroy',
+                'superadmin.users.permissions.edit', 'superadmin.users.bulk_permissions'
+            ])->pluck('id');
+            $user->permissions()->sync($managementPerms);
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Data manpower berhasil ditambahkan'
+            'message' => 'Data manpower & user berhasil ditambahkan'
         ]);
     }
 
@@ -334,22 +378,65 @@ class ManpowerController extends Controller
             $path = $file->getRealPath();
             
             $handle = fopen($path, "r");
-            // Skip header if needed, assuming row 1 is header
-            fgetcsv($handle, 1000, ","); 
+            // Skip header based on start_row
+            $startRow = max(1, (int)$request->input('start_row', 2));
+            for ($i = 1; $i < $startRow; $i++) {
+                fgetcsv($handle, 1000, ",");
+            }
+            
+            // Map Columns
+            $idxNik = $this->columnToIndex($request->input('col_nik', 'A'));
+            $idxNama = $this->columnToIndex($request->input('col_nama', 'B'));
+            $idxDept = $this->columnToIndex($request->input('col_departemen', 'C'));
+            $idxBagian = $this->columnToIndex($request->input('col_bagian', 'D'));
+            $idxRole = $this->columnToIndex($request->input('col_role')); // Optional
+            $idxPass = $this->columnToIndex($request->input('col_password')); // Optional
             
             $count = 0;
             while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                // Assuming format: NIK, Nama, Departemen, Bagian
-                if(count($data) >= 2) {
-                     MManpower::create([
-                        'nik' => $data[0] ?? null,
-                        'nama' => $data[1],
-                        'departemen' => $data[2] ?? null,
-                        'bagian' => $data[3] ?? null,
-                        'mp_id' => $data[1].'|'.($data[0] ?? ''),
-                        'qrcode' => $data[1].'|'.($data[0] ?? ''),
+                // Extract Values using dynamic index
+                $nik = ($idxNik >= 0 && isset($data[$idxNik])) ? trim($data[$idxNik]) : null;
+                $nama = ($idxNama >= 0 && isset($data[$idxNama])) ? trim($data[$idxNama]) : null;
+                
+                if ($nama) {
+                     $dept = ($idxDept >= 0 && isset($data[$idxDept])) ? trim($data[$idxDept]) : null;
+                     $bagian = ($idxBagian >= 0 && isset($data[$idxBagian])) ? trim($data[$idxBagian]) : null;
+                     
+                     // Generate ID
+                     $mpId = $nama . '|' . ($nik ?? '');
+                     
+                     $manpower = MManpower::create([
+                        'nik' => $nik,
+                        'nama' => $nama,
+                        'departemen' => $dept,
+                        'bagian' => $bagian,
+                        'mp_id' => $mpId,
+                        'qrcode' => $mpId,
                         'status' => 1
                      ]);
+                     
+                     // User Account logic
+                     $role = ($idxRole >= 0 && isset($data[$idxRole])) ? (int)$data[$idxRole] : 0;
+                     $password = ($idxPass >= 0 && isset($data[$idxPass])) ? trim($data[$idxPass]) : null;
+
+                     $user = \App\Models\User::firstOrCreate(
+                        ['user_id' => $mpId],
+                        ['role' => 0]
+                     );
+                     $user->role = $role;
+                     if (!empty($password)) {
+                         $user->password = bcrypt($password);
+                     }
+                     $user->save();
+
+                     if ($role === 2) {
+                        $managementPerms = \App\Models\Permission::whereIn('slug', [
+                            'superadmin.users.index', 'superadmin.users.create', 'superadmin.users.destroy',
+                            'superadmin.users.permissions.edit', 'superadmin.users.bulk_permissions'
+                        ])->pluck('id');
+                        $user->permissions()->sync($managementPerms);
+                    }
+
                      $count++;
                 }
             }

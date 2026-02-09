@@ -17,8 +17,8 @@
 
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-3xl font-bold text-gray-800">Recycle Bin Perusahaan</h2>
-                <p class="text-gray-600 mt-1">Pulihkan data perusahaan yang dihapus</p>
+                <h2 class="text-xl font-bold text-gray-900 leading-none">Recycle Bin Perusahaan</h2>
+                <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Pulihkan data perusahaan yang dihapus</p>
             </div>
             
             <div class="flex gap-2">

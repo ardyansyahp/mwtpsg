@@ -15,9 +15,15 @@ class CheckAuth
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Prevent redirect loop if already on login page
+        if ($request->is('login') || $request->is('login/*')) {
+            return $next($request);
+        }
+
         // Check if user is logged in by checking session
         if (!session()->has('user_id')) {
-            return redirect('/login')->with('error', 'Please login to continue');
+            // Redirect to Portal Login (Root) - Only if not already coming from there
+            return redirect()->away('http://mwtpsg.test/login');
         }
 
         return $next($request);

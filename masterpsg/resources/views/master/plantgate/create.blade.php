@@ -9,8 +9,8 @@
             </svg>
             <span class="font-medium">Kembali</span>
         </a>
-        <h2 class="text-3xl font-bold text-gray-800">Tambah Plant Gate</h2>
-        <p class="text-gray-600 mt-1">Tambah data plant gate baru</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Tambah Plant Gate</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Tambah data plant gate baru</p>
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

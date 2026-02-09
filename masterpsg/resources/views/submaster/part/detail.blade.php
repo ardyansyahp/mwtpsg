@@ -4,8 +4,8 @@
 <div class="fade-in">
     {{-- Header --}}
     <div class="mb-6">
-        <h2 class="text-3xl font-bold text-gray-800">Detail Part</h2>
-        <p class="text-gray-600 mt-1">Informasi lengkap part</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Detail Part</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Informasi lengkap part</p>
     </div>
 
     {{-- Main Content --}}

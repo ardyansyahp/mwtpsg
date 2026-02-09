@@ -11,9 +11,9 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
                 </a>
-                <h2 class="text-3xl font-bold text-gray-800">Recycle Bin - Plant Gate Part</h2>
+                <h2 class="text-xl font-bold text-gray-900 leading-none">Recycle Bin - Plant Gate Part</h2>
             </div>
-            <p class="text-gray-600">Data plant gate part yang dihapus ({{ $trashed->total() }} item)</p>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Data plant gate part yang dihapus ({{ $trashed->total() }} item)</p>
         </div>
         
         @if($trashed->count() > 0)

@@ -9,9 +9,9 @@
                 <a href="{{ route('master.mesin.index') }}" class="text-gray-500 hover:text-gray-700 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                 </a>
-                <h2 class="text-3xl font-bold text-gray-800">Recycle Bin Mesin</h2>
+                <h2 class="text-xl font-bold text-gray-900 leading-none">Recycle Bin Mesin</h2>
             </div>
-            <p class="text-gray-600 ml-9">Pulihkan data mesin yang dihapus</p>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider ml-9">Pulihkan data mesin yang dihapus</p>
         </div>
         
         @if($mesins->count() > 0 && userCan('master.mesin.delete'))

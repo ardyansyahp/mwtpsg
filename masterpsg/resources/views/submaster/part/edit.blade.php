@@ -6,8 +6,8 @@
         <a href="{{ route('submaster.part.index') }}" class="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-3 transition-colors">
             &larr; <span class="font-medium">Kembali</span>
         </a>
-        <h2 class="text-3xl font-bold text-gray-800">Edit Part</h2>
-        <p class="text-gray-600 mt-1">Edit data part: {{ $part->nomor_part }}</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Edit Part</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Edit data part: {{ $part->nomor_part }}</p>
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

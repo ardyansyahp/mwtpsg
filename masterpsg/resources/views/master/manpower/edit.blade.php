@@ -15,8 +15,8 @@
             <span class="font-medium">Kembali</span>
         </a>
 
-        <h2 class="text-3xl font-bold text-gray-800">Edit Manpower</h2>
-        <p class="text-gray-600 mt-1">Edit data manpower</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Edit Manpower</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Edit data manpower</p>
     </div>
 
     {{-- Form --}}

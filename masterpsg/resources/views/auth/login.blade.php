@@ -38,13 +38,8 @@
                         autofocus
                         autocomplete="off"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Type to search..."
+                        placeholder="Enter User ID"
                         value="{{ old('user_id') }}">
-                    
-                    <!-- Autocomplete suggestions -->
-                    <div id="suggestions" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <!-- Suggestions will be populated here -->
-                    </div>
                 </div>
                 @error('user_id')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -75,68 +70,7 @@
     </div>
 
     <script>
-    // Manpower data for autocomplete
-    const manpowers = @json($manpowers);
-
-    const userIdInput = document.getElementById('user_id');
-    const suggestionsDiv = document.getElementById('suggestions');
-
-    // Filter and show suggestions
-    function showSuggestions(searchTerm) {
-        if (!searchTerm) {
-            suggestionsDiv.classList.add('hidden');
-            return;
-        }
-
-        const filtered = manpowers.filter(mp => 
-            mp.mp_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            mp.nama.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        if (filtered.length === 0) {
-            suggestionsDiv.classList.add('hidden');
-            return;
-        }
-
-        suggestionsDiv.innerHTML = filtered.map(mp => `
-            <div class="suggestion-item px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
-                 data-mp-id="${mp.mp_id}">
-                <div class="font-medium text-gray-900">${mp.mp_id}</div>
-                <div class="text-sm text-gray-600">${mp.nama}</div>
-            </div>
-        `).join('');
-
-        suggestionsDiv.classList.remove('hidden');
-
-        // Add click handlers to suggestions
-        document.querySelectorAll('.suggestion-item').forEach(item => {
-            item.addEventListener('click', function() {
-                userIdInput.value = this.dataset.mpId;
-                suggestionsDiv.classList.add('hidden');
-                // Focus on password field after selection
-                document.getElementById('password').focus();
-            });
-        });
-    }
-
-    // Input event listener
-    userIdInput.addEventListener('input', function() {
-        showSuggestions(this.value);
-    });
-
-    // Hide suggestions when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!userIdInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-            suggestionsDiv.classList.add('hidden');
-        }
-    });
-
-    // Show suggestions on focus if there's a value
-    userIdInput.addEventListener('focus', function() {
-        if (this.value) {
-            showSuggestions(this.value);
-        }
-    });
+        // Auto-focus logic if needed, but autocomplete removed per request
     </script>
 </body>
 </html>

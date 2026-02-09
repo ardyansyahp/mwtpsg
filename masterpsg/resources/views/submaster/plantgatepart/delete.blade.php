@@ -13,8 +13,8 @@
             </svg>
             <span class="font-medium">Kembali</span>
         </a>
-        <h2 class="text-3xl font-bold text-gray-800">Hapus Plant Gate Part</h2>
-        <p class="text-gray-600 mt-1">Konfirmasi penghapusan relasi plant gate dengan part</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Hapus Plant Gate Part</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Konfirmasi penghapusan relasi plant gate dengan part</p>
     </div>
 
     {{-- Delete Confirmation Card --}}

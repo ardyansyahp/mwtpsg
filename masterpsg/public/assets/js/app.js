@@ -1,69 +1,7 @@
 // Basic Navigation & UI Logic
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Sidebar Toggle Mobile
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', (e) => {
-            e.preventDefault();
-            sidebar.classList.toggle('hidden');
-            sidebarOverlay.classList.toggle('hidden');
-        });
-    }
-
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', () => {
-            sidebar.classList.add('hidden');
-            sidebarOverlay.classList.add('hidden');
-        });
-    }
-
-    // 2. Submenu Toggling
-    const toggles = [
-        { id: 'dashboardToggle', submenu: 'dashboardSubmenu', arrow: 'dashboardArrow' },
-        { id: 'masterDataToggle', submenu: 'masterDataSubmenu', arrow: 'masterDataArrow' },
-        { id: 'subMasterToggle', submenu: 'subMasterSubmenu', arrow: 'subMasterArrow' },
-        { id: 'bahanBakuToggle', submenu: 'bahanBakuSubmenu', arrow: 'bahanBakuArrow' },
-        { id: 'produksiToggle', submenu: 'produksiSubmenu', arrow: 'produksiArrow' },
-        { id: 'finishGoodToggle', submenu: 'finishGoodSubmenu', arrow: 'finishGoodArrow' },
-        { id: 'shippingToggle', submenu: 'shippingSubmenu', arrow: 'shippingArrow' }
-    ];
-
-    toggles.forEach(item => {
-        const toggleEl = document.getElementById(item.id);
-        const submenuEl = document.getElementById(item.submenu);
-        const arrowEl = document.getElementById(item.arrow);
-
-        if (toggleEl && submenuEl) {
-            // Initialize: If parent is marked as active, show submenu
-            if (toggleEl.classList.contains('active')) {
-                submenuEl.classList.remove('hidden');
-                if (arrowEl) arrowEl.classList.add('rotate-180');
-            }
-
-            toggleEl.addEventListener('click', (e) => {
-                e.preventDefault();
-                const isHidden = submenuEl.classList.contains('hidden');
-
-                // Close other submenus (Optional but recommended for cleaner UI)
-                toggles.forEach(other => {
-                    if (other.id !== item.id) {
-                        const otherSub = document.getElementById(other.submenu);
-                        const otherArrow = document.getElementById(other.arrow);
-                        if (otherSub) otherSub.classList.add('hidden');
-                        if (otherArrow) otherArrow.classList.remove('rotate-180');
-                    }
-                });
-
-                submenuEl.classList.toggle('hidden');
-                if (arrowEl) {
-                    arrowEl.classList.toggle('rotate-180');
-                }
-            });
-        }
-    });
+    // 1. Sidebar & Submenu Logic (Handled in app.blade.php for persistence & performance)
+    // Removed old toggle logic to avoid conflicts
 
     // 3. Clock Update (Asia/Jakarta)
     function updateDateTime() {

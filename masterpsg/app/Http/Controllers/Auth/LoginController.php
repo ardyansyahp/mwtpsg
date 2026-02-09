@@ -32,63 +32,114 @@ class LoginController extends Controller
         $userId = $request->input('user_id');
         $password = $request->input('password');
 
-        // Check if this is superadmin login (user exists in users table and is_superadmin = true)
-        $user = User::where('user_id', $userId)->where('is_superadmin', true)->first();
+        // 1. Check existing User account first (for Roles 1 & 2 which require password)
+        $user = User::where('user_id', $userId)->first();
 
-        if ($user) {
-            // Superadmin requires password
+        // If user exists AND has privileged role (1=Superadmin or 2=Management)
+        if ($user && in_array($user->role, [1, 2])) {
+            // Privileged Role requires password
             if (!$password) {
-                return back()->with('error', 'Password is required for superadmin');
+                return back()->with('error', 'Password is required for this account');
             }
 
             if (!\Hash::check($password, $user->password)) {
                 return back()->with('error', 'Invalid credentials');
             }
 
+            // LOGIN USER USING LARAVEL AUTH
+            \Auth::login($user);
+
             // Store user info in session
             session([
                 'user_id' => $user->user_id,
-                'is_superadmin' => $user->is_superadmin,
+                'role' => (int) $user->role,
+                'user_name' => 'Administrator', // Or fetch from manpower if linked
+                'mp_nama' => 'Administrator',
+                'departemen' => 'SYSTEM ADMIN',
                 'permissions' => $user->getPermissionSlugs(),
             ]);
 
-            return redirect('/')->with('success', 'Welcome back, Superadmin!');
+            return $this->authenticated($request, $user) ?: redirect('/?ref=login');
         }
 
         // Regular user login (no password required)
-        // user_id is the same as mp_id for regular users
-        $manpower = MManpower::where('mp_id', $userId)->first();
+        $manpower = MManpower::where('mp_id', $userId)
+            ->orWhere('mp_id', 'LIKE', "%|$userId")
+            ->first();
 
         if (!$manpower) {
-            return back()->with('error', 'User ID not found');
+            return back()->with('error', 'User ID not found.');
         }
+
+        // Use the FULL ID from database for consistency
+        $fullUserId = $manpower->mp_id;
+
+        // Check if user exists, if not create one
+        $user = User::firstOrCreate(
+            ['user_id' => $fullUserId],
+            [
+                'password' => null,
+                'role' => 0,
+            ]
+        );
 
         if (!$manpower->status) {
             return back()->with('error', 'Akun Anda dinonaktifkan/Inactive. Hubungi Admin.');
         }
-
-        // Check if user exists, if not create one
-        // For regular users, user_id = mp_id
-        $user = User::firstOrCreate(
-            ['user_id' => $userId],
-            [
-                'password' => null,
-                'is_superadmin' => false,
-            ]
-        );
-
+        
         // Load permissions explicitly
         $user->load('permissions');
         
+        // LOGIN USER USING LARAVEL AUTH
+        \Auth::login($user);
+
         // Store user info in session
         session([
             'user_id' => $user->user_id,
-            'is_superadmin' => $user->is_superadmin,
-            'permissions' => $user->getPermissionSlugs(),
+            'role' => (int) $user->role,
+            'user_name' => $manpower->nama,
             'mp_nama' => $manpower->nama,
+            'departemen' => $manpower->departemen ?? 'STAFF',
+            'permissions' => $user->getPermissionSlugs(),
         ]);
 
-        return redirect('/')->with('success', 'Welcome, ' . $manpower->nama . '!');
+        return $this->authenticated($request, $user) ?: redirect('/');
+    }
+
+    /**
+     * The user has been authenticated.
+     */
+    protected function authenticated(Request $request, $user)
+    {
+        // 0. Superadmin stays on Portal to choose application
+        if ($user->role === 1) {
+            return null;
+        }
+
+        // 1. Check for Executive/Management Access (Priority)
+        // Ensure Superadmin is NOT redirected here automatically
+        /* 
+        MOVED TO ROUTES/WEB.PHP FOR BETTER CONTROL VIA PERMISSIONS
+        
+        if (!$user->is_superadmin && $user->hasPermission('management_dashboard')) {
+            return redirect()->away('http://mwtpsg.test/managementmwt/public/');
+        }
+
+        // 2. Check for Supplier Access
+        if ($user->hasPermission('controlsupplier.view') || $user->hasPermission('controlsupplier.monitoring')) {
+            // Redirect to Supplier PSG via mwtpsg.test
+            return redirect()->away('http://mwtpsg.test/supplierpsg/public/');
+        }
+
+        // 3. Check for Shipping Access
+        if ($user->hasPermission('shipping.delivery.view') || $user->hasPermission('shipping.controltruck.view')) {
+            // Redirect to Shipping PSG via mwtpsg.test
+            return redirect()->away('http://mwtpsg.test/shippingpsg/public/');
+        }
+        */
+
+        // Default: Stay on Master/Portal
+        return null;
     }
 
     /**
@@ -96,6 +147,7 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
+        \Auth::logout();
         session()->flush();
         return redirect('/login')->with('success', 'Logged out successfully');
     }

@@ -18,7 +18,7 @@ class PartController extends Controller
      */
     public function index(Request $request)
     {
-        if (!userCan('submaster.part.index')) abort(403);
+        if (!userCan('submaster.part.view')) abort(403);
 
         $query = SMPart::query()->with(['customer']);
 
@@ -258,7 +258,7 @@ class PartController extends Controller
      */
     public function show($id)
     {
-         if (!userCan('submaster.part.index')) abort(403);
+         if (!userCan('submaster.part.view')) abort(403);
          $part = SMPart::withTrashed()->with(['customer', 'childParts', 'partMaterials.material', 'partBoxes.box'])->findOrFail($id);
          return view('submaster.part.detail', compact('part'));
     }
@@ -552,7 +552,7 @@ class PartController extends Controller
     }
     
     public function export() {
-        if (!userCan('submaster.part.index')) abort(403);
+        if (!userCan('submaster.part.view')) abort(403);
         $fileName = 'data_part_' . date('Y-m-d_H-i-s') . '.csv';
         $data = SMPart::with('customer')->orderBy('created_at', 'desc')->get();
         $headers = ["Content-type" => "text/csv", "Content-Disposition" => "attachment; filename=$fileName", "Pragma" => "no-cache", "Expires" => "0"];

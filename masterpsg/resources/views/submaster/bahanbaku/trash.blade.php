@@ -4,8 +4,8 @@
 <div class="fade-in">
     <div class="mb-6 flex justify-between items-center">
         <div>
-            <h2 class="text-3xl font-bold text-gray-800">Sampah Bahan Baku</h2>
-            <p class="text-gray-600 mt-1">Kelola data bahan baku yang telah dihapus (soft delete)</p>
+            <h2 class="text-xl font-bold text-gray-900 leading-none">Sampah Bahan Baku</h2>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Kelola data bahan baku yang telah dihapus (soft delete)</p>
         </div>
         <div class="flex gap-2">
             <a href="{{ route('master.bahanbaku.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors">

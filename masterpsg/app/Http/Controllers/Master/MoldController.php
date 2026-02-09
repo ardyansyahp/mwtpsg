@@ -12,7 +12,7 @@ class MoldController extends Controller
 {
     public function index(Request $request)
     {
-        if (!userCan('master.mold.index')) abort(403);
+        if (!userCan('master.mold.view')) abort(403);
 
         $query = MMold::query()->with(['perusahaan', 'part']);
 
@@ -267,7 +267,7 @@ class MoldController extends Controller
 
     // Export
     public function export() {
-        if (!userCan('master.mold.index')) abort(403);
+        if (!userCan('master.mold.view')) abort(403);
         
         $molds = MMold::with(['perusahaan', 'part'])->get();
         

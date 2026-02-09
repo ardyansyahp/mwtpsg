@@ -4,8 +4,8 @@
 <div class="fade-in">
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h2 class="text-3xl font-bold text-gray-800">Sampah Part</h2>
-            <p class="text-gray-600 mt-1">Kelola data part yang telah dihapus</p>
+            <h2 class="text-xl font-bold text-gray-900 leading-none">Sampah Part</h2>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Kelola data part yang telah dihapus</p>
         </div>
         <div class="flex gap-2">
             <a href="{{ route('submaster.part.index') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">

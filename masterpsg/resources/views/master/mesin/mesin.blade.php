@@ -5,8 +5,8 @@
     {{-- Header & Toolbar --}}
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-            <h2 class="text-3xl font-bold text-gray-800">Master Mesin</h2>
-            <p class="text-gray-600 mt-1">Kelola data mesin produksi</p>
+            <h2 class="text-xl font-bold text-gray-900 leading-none">Master Mesin</h2>
+            <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Kelola data mesin produksi</p>
         </div>
         
         <div class="flex flex-col md:flex-row gap-2 items-start md:items-center">

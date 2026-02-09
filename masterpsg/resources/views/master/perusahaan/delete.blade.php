@@ -15,8 +15,8 @@
             <span class="font-medium">Kembali</span>
         </a>
 
-        <h2 class="text-3xl font-bold text-gray-800">Hapus Perusahaan</h2>
-        <p class="text-gray-600 mt-1">Konfirmasi penghapusan data perusahaan</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Hapus Perusahaan</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Konfirmasi penghapusan data perusahaan</p>
     </div>
 
     {{-- Confirmation Card --}}

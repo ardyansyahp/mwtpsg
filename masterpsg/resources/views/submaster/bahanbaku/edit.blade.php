@@ -3,8 +3,8 @@
 @section('content')
 <div class="fade-in">
     <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Edit Bahan Baku</h2>
-        <p class="text-gray-600 mt-1">Perbarui data bahan baku</p>
+        <h2 class="text-xl font-bold text-gray-900 leading-none">Edit Bahan Baku</h2>
+        <p class="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-wider">Perbarui data bahan baku</p>
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
