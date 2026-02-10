@@ -91,11 +91,12 @@
             formData.append('_token', '{{ csrf_token() }}');
             formData.append('_method', 'DELETE');
             
-            const response = await fetch('/spk/{{ $spk->id }}/destroy', {
+            const response = await fetch('{{ route('spk.destroy', $spk->id) }}', {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 }
             });
             

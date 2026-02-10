@@ -23,7 +23,8 @@ class CheckAuth
         // Check if user is logged in by checking session
         if (!session()->has('user_id')) {
             // Redirect to Portal Login (Root) - Only if not already coming from there
-            return redirect()->away('http://mwtpsg.test/login');
+            $portalUrl = env('PORTAL_URL', 'https://portal.s2smfg.biz.id');
+            return redirect()->away(env('URL_MASTER') . '/login');
         }
 
         // Check if user has management role (role = 2)
@@ -31,7 +32,7 @@ class CheckAuth
         if ($userRole !== 2) {
             // Redirect non-management users back to masterpsg with error
             session()->flash('error', 'Access denied. Management portal is only accessible to management users.');
-            return redirect()->away('http://mwtpsg.test/masterpsg/public/');
+            return redirect()->away(env('URL_MASTER'));
         }
 
         return $next($request);

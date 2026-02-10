@@ -23,7 +23,7 @@ class TrackerController extends Controller
         
         // Initial load of data
         $deliveries = TShippingDeliveryHeader::with(['kendaraan', 'driver'])
-            ->whereIn('status', ['IN_TRANSIT', 'ARRIVED', 'ADVANCED', 'NORMAL', 'PENDING'])
+            ->whereIn('status', ['IN_TRANSIT', 'ARRIVED', 'ADVANCED', 'NORMAL', 'DELAY', 'PENDING'])
             ->whereDate('tanggal_berangkat', '>=', $today)
             ->get();
 
@@ -107,7 +107,7 @@ class TrackerController extends Controller
 
         // Fetch deliveries that are active
         $deliveries = TShippingDeliveryHeader::with(['kendaraan', 'driver'])
-            ->whereIn('status', ['IN_TRANSIT', 'ARRIVED', 'ADVANCED', 'NORMAL', 'PENDING'])
+            ->whereIn('status', ['IN_TRANSIT', 'ARRIVED', 'ADVANCED', 'NORMAL', 'DELAY', 'PENDING'])
             ->whereDate('tanggal_berangkat', '>=', $today)
             ->get()
             ->map(function ($d) {

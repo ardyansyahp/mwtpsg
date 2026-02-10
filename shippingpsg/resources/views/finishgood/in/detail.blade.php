@@ -1,9 +1,9 @@
 @extends('layout.app')
 
 @section('content')
-<div class="fade-in max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="fade-in max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 py-4">
     {{-- Header Section --}}
-    <div class="mb-8">
+    <div class="mb-4"> {{-- Reduced from mb-8 --}}
         <div class="flex items-center gap-4 mb-4">
             <a href="{{ route('finishgood.in.index') }}" class="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,7 +22,7 @@
                 <div>
                     <span class="text-xs text-gray-500 uppercase tracking-wider block mb-1">Lot Number</span>
                     <span class="text-xl font-mono font-bold text-gray-900 bg-gray-50 px-3 py-1 rounded inline-block">
-                        {{ $finishGoodIn->lot_number }}
+                        {{ $finishGoodIn->lot_number ?? '-' }}
                     </span>
                 </div>
                 <div>
@@ -51,20 +51,20 @@
     </div>
 
     {{-- Items Table --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-none flex justify-between items-center">
             <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Daftar Scan Box ({{ $items->count() }})</h3>
         </div>
         
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 border-b border-gray-200">
+        <div class="overflow-y-auto flex-1 p-0">
+            <table class="w-full relative">
+                <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase w-16">No</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Waktu Scan</th>
-                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Qty (Pcs)</th>
-                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Operator</th>
-                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase w-16 bg-gray-50">No</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Waktu Scan</th>
+                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase bg-gray-50">Qty (Pcs)</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase bg-gray-50">Operator</th>
+                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase bg-gray-50">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -80,17 +80,17 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-700 flex items-center gap-2">
-                                <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
+                                <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold flex-shrink-0">
                                     {{ substr($item->manpower->nama ?? 'U', 0, 1) }}
                                 </div>
-                                {{ $item->manpower->nama ?? 'Unknown' }}
+                                <span class="truncate max-w-[150px]">{{ $item->manpower->nama ?? 'Unknown' }}</span>
                             </td>
-                            <td class="px-6 py-4 text-right">
-                                <button onclick="deleteItem({{ $item->id }})" class="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all" title="Hapus Box Ini">
+                            <td class="px-6 py-4 text-center"> {{-- Centered action column --}}
+                                <div onclick="deleteItem({{ $item->id }})" class="cursor-pointer text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all inline-block" title="Hapus Box Ini">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                     </svg>
-                                </button>
+                                </div>
                                 
                                 <form id="delete-form-{{ $item->id }}" action="{{ route('finishgood.in.destroy', $item->id) }}" method="POST" class="hidden">
                                     @csrf

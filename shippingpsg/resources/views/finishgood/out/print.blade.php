@@ -45,17 +45,17 @@
         }
 
         /* Column Widths - Optimized */
-        .col-no { width: 2.5%; }
-        .col-part-no { width: 10%; }
+        /* Column Widths - Optimized */
+        .col-no { width: 3%; }
+        .col-part-no { width: 12%; }
         .col-part-name { width: 18%; }
-        .col-outstanding { width: 5%; }
-        .col-jadwal { width: 5.5%; }
-        .col-std { width: 5%; }
-        .col-jumlah { width: 5%; }
-        .col-cycle { width: 6%; }
-        .col-balance { width: 5%; }
-        .col-point { width: 3.5%; }
-        .col-sj { width: 2.5%; }
+        .col-jadwal { width: 7%; }
+        .col-std { width: 6%; }
+        .col-jumlah { width: 7%; }
+        .col-cycle { width: 7%; }
+        .col-balance { width: 6%; }
+        .col-point { width: 4%; }
+        .col-sj { width: 3%; }
         
         .point-control-legend { margin: 10px 0; font-size: 8px; }
         .point-control-legend strong { display: block; margin-bottom: 3px; font-size: 8px; }
@@ -149,10 +149,9 @@
                 <th rowspan="2" class="col-no">NO</th>
                 <th rowspan="2" class="col-part-no">NOMOR PART</th>
                 <th rowspan="2" class="col-part-name">NAMA PART</th>
-                <th rowspan="2" class="col-outstanding">OUTS<br>DELIV</th>
                 <th class="col-jadwal">JADWAL<br>DELIV</th>
                 <th class="col-std">STD<br>PACK</th>
-                <th class="col-jumlah">TOTAL<br>PULL</th>
+                <th class="col-jumlah">TOTAL<br>QTY</th>
                 @foreach($availableCycles as $cycle)
                 <th colspan="2">ACT PULL<br>CYC {{ $cycle }}</th>
                 @endforeach
@@ -183,7 +182,6 @@
                 <td>{{ $index + 1 }}</td>
                 <td class="text-left">{{ $detail['part']->nomor_part ?? '-' }}</td>
                 <td class="text-left">{{ $detail['part']->nama_part ?? '-' }}</td>
-                <td>-</td>
                 <td>{{ number_format($detail['jadwal_delivery_pcs']) }}</td>
                 <td>{{ number_format($detail['qty_packing_box']) }}</td>
                 <td>{{ number_format($detail['jumlah_pulling_box']) }}</td>
@@ -200,7 +198,7 @@
                 <td></td>
             </tr>
             @empty
-            <tr><td colspan="{{ 14 + (count($availableCycles) * 2) }}">Tidak ada data</td></tr>
+            <tr><td colspan="{{ 13 + (count($availableCycles) * 2) }}">Tidak ada data</td></tr>
             @endforelse
             
             @php $emptyRows = 15 - count($details); @endphp
@@ -210,7 +208,6 @@
                 <td>{{ count($details) + $i + 1 }}</td>
                 <td class="text-left"></td>
                 <td class="text-left"></td>
-                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>

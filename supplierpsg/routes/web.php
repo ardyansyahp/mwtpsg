@@ -80,13 +80,15 @@ Route::prefix('controlsupplier')->name('controlsupplier.')->group(function () {
 
 // Authentication Routes - Redirect to S2S MWT
 Route::get('/login', function () {
-    return redirect()->away('http://mwtpsg.test/login');
+    $portalUrl = env('PORTAL_URL', 'https://portal.s2smfg.biz.id');
+    return redirect()->away($portalUrl . '/login');
 })->name('login');
 
 // Logout Route
 Route::post('/logout', function () {
     \Auth::logout();
     session()->flush();
-    return redirect()->away('http://mwtpsg.test/login');
+    $portalUrl = env('PORTAL_URL', 'https://portal.s2smfg.biz.id');
+    return redirect()->away($portalUrl . '/login');
 })->name('logout');
 

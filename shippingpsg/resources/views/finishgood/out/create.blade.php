@@ -219,7 +219,7 @@
         try {
             const lotNumberNormalized = lotNumber.trim();
             
-            const response = await fetch(`/finishgood/out/api/finish-good-in/${encodeURIComponent(lotNumberNormalized)}`);
+            const response = await fetch(`{{ url('finishgood/out/api/finish-good-in') }}/${encodeURIComponent(lotNumberNormalized)}`);
             const data = await response.json();
 
             if (!data.success) {

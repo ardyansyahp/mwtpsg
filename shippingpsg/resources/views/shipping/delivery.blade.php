@@ -343,7 +343,7 @@ function finishTrip(deliveryId) {
         return;
     }
 
-    fetch(`/shipping/delivery/${deliveryId}/finish`, {
+    fetch(`{{ url('shipping/delivery') }}/${deliveryId}/finish`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

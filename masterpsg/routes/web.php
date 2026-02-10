@@ -26,15 +26,7 @@ Route::get('/', function () {
 
     // 2b. Management (2) -> Redirect to Management Portal
     if ($role === 2) {
-        $currentUrl = url('/');
-        $managementUrl = \Illuminate\Support\Str::replaceLast('masterpsg', 'managementmwt', $currentUrl);
-        
-        // Handle if URL didn't change (e.g. running on root domain mwtpsg.test)
-        if ($managementUrl === $currentUrl) {
-            $managementUrl = rtrim($currentUrl, '/') . '/managementmwt/public';
-        }
-        
-        return redirect()->away($managementUrl)->withHeaders($headers);
+        return redirect()->away(env('URL_MANAGEMENT'))->withHeaders($headers);
     }
     
     // 3. Explicit Master Homepage Priority
@@ -44,19 +36,11 @@ Route::get('/', function () {
 
     // 4. Regular User Redirects
     if (userCan('homepage.supplier.view')) {
-        $supplierUrl = \Illuminate\Support\Str::replaceLast('masterpsg', 'supplierpsg', url('/'));
-        if ($supplierUrl === url('/')) { 
-            $supplierUrl = rtrim(url('/'), '/') . '/../supplierpsg/public'; 
-        }
-        return redirect()->away($supplierUrl)->withHeaders($headers);
+        return redirect()->away(env('URL_SUPPLIER'))->withHeaders($headers);
     }
     
     if (userCan('homepage.shipping.view')) {
-            $shippingUrl = \Illuminate\Support\Str::replaceLast('masterpsg', 'shippingpsg', url('/'));
-            if ($shippingUrl === url('/')) { 
-            $shippingUrl = rtrim(url('/'), '/') . '/../shippingpsg/public'; 
-        }
-        return redirect()->away($shippingUrl)->withHeaders($headers);
+        return redirect()->away(env('URL_SHIPPING'))->withHeaders($headers);
     }
 
     // 3. Default Master Homepage

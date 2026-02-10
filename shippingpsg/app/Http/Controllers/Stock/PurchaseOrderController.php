@@ -53,22 +53,13 @@ class PurchaseOrderController extends Controller
         return redirect()->route('stock.po.index')->with('success', 'Purchase Order berhasil ditambahkan.');
     }
 
-    public function edit(TPurchaseOrderCustomer $purchaseOrder)
+    public function edit(TPurchaseOrderCustomer $po)
     {
-        // Parameter binding name depends on route definition. 
-        // Resource 'po' -> parameter usually 'po'. 
-        // But in destroy it was '$purchaseOrder'. Let's check route: 'po'.
-        // Implicit binding should work if variable name matches.
-        // Wait, Route::resource uses {po} for the parameter.
-        // So argument name should be $po ideally, but $purchaseOrder works if type hinted correctly in Laravel 7+, 
-        // but to be safe, I will stick to what's there or just use $po if I change it.
-        // The existing destroy used $purchaseOrder.
-        
         $parts = SMPart::orderBy('nomor_part')->get();
-        return view('stock.purchase_order.edit', compact('purchaseOrder', 'parts'));
+        return view('stock.purchase_order.edit', compact('po', 'parts'));
     }
 
-    public function update(Request $request, TPurchaseOrderCustomer $purchaseOrder)
+    public function update(Request $request, TPurchaseOrderCustomer $po)
     {
         $validated = $request->validate([
             'part_id' => 'required|exists:sm_part,id',
@@ -79,14 +70,14 @@ class PurchaseOrderController extends Controller
             'year' => 'required|integer|min:2020|max:2099',
         ]);
 
-        $purchaseOrder->update($validated);
+        $po->update($validated);
 
         return redirect()->route('stock.po.index')->with('success', 'Purchase Order berhasil diperbarui.');
     }
 
-    public function destroy(TPurchaseOrderCustomer $purchaseOrder)
+    public function destroy(TPurchaseOrderCustomer $po)
     {
-        $purchaseOrder->delete();
+        $po->delete();
         return redirect()->back()->with('success', 'Purchase Order berhasil dihapus.');
     }
 
@@ -121,7 +112,8 @@ class PurchaseOrderController extends Controller
             $stats = [
                 'success' => 0,
                 'failed' => 0,
-                'errors' => []
+                'errors' => [],
+                'warnings' => []
             ];
 
             $rowIndex = 0;
@@ -153,6 +145,13 @@ class PurchaseOrderController extends Controller
                     $qty = (int) str_replace(['.', ','], '', $qty);
                     $month = (int) $month;
                     $year = (int) $year;
+
+                    // Check Stock for Warning (Using TStockFG)
+                    $currentStock = \App\Models\TStockFG::where('part_id', $part->id)->value('qty') ?? 0;
+
+                    if ($qty > $currentStock) {
+                        $stats['warnings'][] = "Baris $rowIndex (Part {$part->nomor_part}): PO Qty " . number_format($qty) . " > Stock " . number_format($currentStock);
+                    }
 
                     // Update or Create based on unique combo ideally
                     TPurchaseOrderCustomer::updateOrCreate(
@@ -186,7 +185,39 @@ class PurchaseOrderController extends Controller
                     ->with('import_errors', $stats['errors']);
             }
 
-            return redirect()->route('stock.po.index')->with('success', "Import Berhasil! {$stats['success']} PO baru/updated.");
+            if (!empty($stats['warnings'])) {
+                 // Send WhatsApp Notification
+                 try {
+                     $target = env('FONNTE_GROUP_PPIC'); 
+                     if ($target) {
+                         $msg = "⚠️ *WARNING PO vs STOCK (IMPORT)*\n\n";
+                         $msg .= "Ditemukan PO dengan Qty > Stock Saat Ini:\n\n";
+                         
+                         $count = 0;
+                         foreach ($stats['warnings'] as $warning) {
+                             if ($count >= 15) {
+                                 $msg .= "\n... dan " . (count($stats['warnings']) - 15) . " baris lainnya.";
+                                 break;
+                             }
+                             $msg .= "- " . $warning . "\n";
+                             $count++;
+                         }
+                         
+                         $msg .= "\n_Mohon segera dijadwalkan produksi!_";
+                         
+                          // \App\Helpers\FonnteHelper::send($target, $msg);
+                     }
+                 } catch (\Exception $e) {
+                     \Illuminate\Support\Facades\Log::error("Failed to send WA warning: " . $e->getMessage());
+                 }
+
+                 return redirect()->route('stock.po.index')
+                    ->with('success', "Import Berhasil! {$stats['success']} PO baru/updated.")
+                    ->with('import_warnings', $stats['warnings']);
+            }
+
+            return redirect()->route('stock.po.index')
+                ->with('success', "Import Berhasil! {$stats['success']} PO baru/updated.");
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -266,5 +297,46 @@ class PurchaseOrderController extends Controller
             $result = $result * 26 + (ord($pString[$i]) - 64);
         }
         return $result;
+    }
+
+    public function getPartStock(SMPart $part)
+    {
+        $currentStock = \App\Models\TStockFG::where('part_id', $part->id)->value('qty') ?? 0;
+
+        return response()->json([
+            'id' => $part->id,
+            'nomor_part' => $part->nomor_part,
+            'nama_part' => $part->nama_part,
+            'current_stock' => $currentStock
+        ]);
+    }
+
+    public function getPartPOs(SMPart $part)
+    {
+        $pos = TPurchaseOrderCustomer::where('part_id', $part->id)
+            ->where('year', '>=', now()->year - 1)
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->orderBy('po_number', 'asc')
+            ->get();
+            
+        $data = [];
+        foreach ($pos as $po) {
+            // Calculate Fulfilled
+            $fulfilled = \App\Models\TSpkDetail::where('po_customer_id', $po->id)->sum('jadwal_delivery_pcs');
+            $remaining = $po->qty - $fulfilled;
+            
+            // Only show POs with remaining Qty > 0
+            if ($remaining > 0) {
+                 $monthName = \DateTime::createFromFormat('!m', $po->month)->format('F');
+                 $data[] = [
+                     'id' => $po->id,
+                     'text' => "{$po->po_number} ({$monthName} {$po->year}) - Sisa: " . number_format($remaining),
+                     'remaining' => $remaining
+                 ];
+            }
+        }
+        
+        return response()->json($data);
     }
 }

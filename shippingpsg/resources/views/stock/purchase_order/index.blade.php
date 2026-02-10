@@ -63,6 +63,17 @@
         </div>
     @endif
 
+    @if(session('import_warnings'))
+        <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm">
+            <strong class="block mb-2">Warning: Import selesai tapi ada stok yang tidak mencukupi! Prioritaskan Produksi:</strong>
+            <ul class="list-disc list-inside max-h-48 overflow-y-auto space-y-1">
+                @foreach(session('import_warnings') as $warning)
+                    <li>{{ $warning }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- Table --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">

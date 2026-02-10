@@ -19,6 +19,7 @@ class TSpkDetail extends Model
         'original_jadwal_delivery_pcs',
         'jumlah_pulling_box',
         'catatan',
+        'po_customer_id',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class TSpkDetail extends Model
             'jadwal_delivery_pcs' => 'integer',
             'original_jadwal_delivery_pcs' => 'integer',
             'jumlah_pulling_box' => 'integer',
+            'po_customer_id' => 'integer',
         ];
     }
 
@@ -39,5 +41,10 @@ class TSpkDetail extends Model
     public function part()
     {
         return $this->belongsTo(SMPart::class, 'part_id');
+    }
+
+    public function poCustomer()
+    {
+        return $this->belongsTo(TPurchaseOrderCustomer::class, 'po_customer_id');
     }
 }

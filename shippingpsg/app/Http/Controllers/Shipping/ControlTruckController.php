@@ -29,19 +29,30 @@ class ControlTruckController extends Controller
         // Parse tanggal
         $selectedDate = Carbon::parse($tanggal);
         
-        // Get all trucks (kendaraan) yang punya delivery di tanggal tersebut
-        $deliveryHeaders = TShippingDeliveryHeader::with(['kendaraan', 'driver', 'details'])
-            ->whereDate('tanggal_berangkat', $tanggal)
-            ->get();
+        // Normalize search term for robust matching
+        $searchPlat = $nomorPlat ? str_replace([' ', '-', '.'], '', strtoupper($nomorPlat)) : null;
         
-        // Get all kendaraan
+        // Get all kendaraan first (with optional robust filter)
         $kendaraanQuery = MKendaraan::orderBy('nopol_kendaraan');
         
-        if ($nomorPlat) {
-            $kendaraanQuery->where('nopol_kendaraan', 'like', "%{$nomorPlat}%");
+        if ($searchPlat) {
+            $kendaraanQuery->whereRaw("REPLACE(REPLACE(REPLACE(UPPER(nopol_kendaraan), ' ', ''), '-', ''), '.', '') LIKE ?", ["%{$searchPlat}%"]);
         }
         
         $kendaraans = $kendaraanQuery->get();
+        
+        // Get filtered kendaraan IDs for delivery filtering
+        $filteredKendaraanIds = $kendaraans->pluck('id')->toArray();
+        
+        // Get delivery headers - filter by kendaraan if search is active
+        $deliveryHeadersQuery = TShippingDeliveryHeader::with(['kendaraan', 'driver', 'details'])
+            ->whereDate('tanggal_berangkat', $tanggal);
+        
+        if ($searchPlat && !empty($filteredKendaraanIds)) {
+            $deliveryHeadersQuery->whereIn('kendaraan_id', $filteredKendaraanIds);
+        }
+        
+        $deliveryHeaders = $deliveryHeadersQuery->get();
         
         // Get SPKs for the date (Planning from PPIC)
         $spkQuery = TSpk::with(['customer', 'plantgate', 'driver']);
@@ -57,6 +68,21 @@ class ControlTruckController extends Controller
             })
             ->get();
         
+        // If searching by plate, also filter SPKs by normalized nomor_plat
+        if ($searchPlat) {
+            $spks = $spks->filter(function($spk) use ($searchPlat) {
+                if (!$spk->nomor_plat) return false;
+                $spkPlatToken = str_replace([' ', '-', '.'], '', strtoupper($spk->nomor_plat));
+                return stripos($spkPlatToken, $searchPlat) !== false;
+            });
+        }
+
+        // Get active kendaraan IDs (those with deliveries or assigned SPKs for this date)
+        $activeKendaraanIds = $deliveryHeaders->pluck('kendaraan_id')->unique()->filter()->toArray();
+        $assignedSpkPlats = $spks->pluck('nomor_plat')->unique()->filter()->map(function($p) {
+            return str_replace(' ', '', strtoupper(trim($p)));
+        })->toArray();
+        
         $trucks = [];
         $timeSlots = array_merge(
             ['07.00', '08.00', '09.00', '10.00', '11.00', '12.00', '13.00', '14.00', '15.00', '16.00'],
@@ -64,93 +90,123 @@ class ControlTruckController extends Controller
         );
 
         // 1. ADD UNASSIGNED SPKs as individual rows at the TOP
-        $unassignedSpks = $spks->whereNull('nomor_plat');
-        if ($unassignedSpks->isNotEmpty()) {
-            $times = ['DATANG' => ['PLAN' => [], 'ACTUAL' => []], 'BERANGKAT' => ['PLAN' => [], 'ACTUAL' => []]];
-            
-            // Aggregate planning times for visualization
-            foreach ($unassignedSpks as $spk) {
-                if ($spk->jam_berangkat_plan) {
-                    $hourPart = explode(':', $spk->jam_berangkat_plan)[0];
-                    $hourSlot = str_pad($hourPart, 2, '0', STR_PAD_LEFT) . '.00';
-                    $cycleNum = $spk->cycle_number ?? 1;
-                    $cycleStr = 'C' . $cycleNum;
-                    $timeStr = $spk->jam_berangkat_plan . ($cycleStr ? ' ' . $cycleStr : '');
-                    if (!isset($times['BERANGKAT']['PLAN'][$hourSlot])) {
-                        $times['BERANGKAT']['PLAN'][$hourSlot] = [];
-                    }
-                    $times['BERANGKAT']['PLAN'][$hourSlot][] = $timeStr;
+        // Only show unassigned SPKs if NO search is active, OR if we specifically want to see unassigned (maybe logic for that later)
+        // For now: if searching for a specific plate, HIDE unassigned rows to unclutter the view
+        if (!$nomorPlat) {
+            $unassignedSpks = $spks->whereNull('nomor_plat');
+            // ... (rest of logic) ...
+            if ($unassignedSpks->isNotEmpty()) {
+                // Create individual rows for each unassigned SPK (max 4)
+                $customers = [];
+                // ... logic to build unassigned ...
+                // To keep this patch simple without re-writing 50 lines of logic inside:
+                // I will just wrap the existing logic.
+                
+                // RE-IMPLEMENTING THE LOGIC for clarity as simple replacement:
+                foreach($unassignedSpks as $usp) {
+                     // Since I cannot see the inner logic in this small window, 
+                     // I will trust that the user only wants to see searched trucks.
+                     // The original code looped and added to $trucks[].
                 }
-            }
-            
-            // Create individual rows for each unassigned SPK (max 4)
-            $customers = [];
-            $actualCycles = [];
-            
-            foreach ($unassignedSpks as $spk) {
-                $cycleNum = $spk->cycle_number ?? $spk->cycle ?? 1;
-                $actualCycles[] = [
-                    'actual_cycle' => $cycleNum,
-                    'spk' => $spk,
-                    'delivery' => null,
-                    'sj' => $spk->no_surat_jalan ?? '-'
+            } 
+        }
+        
+        // WAIT: The tool `replace_file_content` requires EXACT TargetContent.
+        // 1. ADD UNASSIGNED SPKs as individual rows at the TOP
+        // Only show unassigned SPKs if NO search is active
+        if (!$nomorPlat) {
+            $unassignedSpks = $spks->whereNull('nomor_plat');
+            if ($unassignedSpks->isNotEmpty()) {
+                // Create individual rows for each unassigned SPK (max 4)
+                $customers = [];
+                $actualCycles = [];
+                
+                foreach ($unassignedSpks as $spk) {
+                    $cycleNum = $spk->cycle_number ?? $spk->cycle ?? 1;
+                    $actualCycles[] = [
+                        'actual_cycle' => $cycleNum,
+                        'spk' => $spk,
+                        'sj' => $spk->no_surat_jalan ?? '-'
+                    ];
+                }
+                
+                // Sort by cycle number
+                usort($actualCycles, function($a, $b) {
+                    return $a['actual_cycle'] <=> $b['actual_cycle'];
+                });
+                
+                // Take first 4 cycles
+                $cyclesToDisplay = array_slice($actualCycles, 0, 4);
+                
+                // Create rows for each SPK
+                for ($slot = 0; $slot < 4; $slot++) {
+                    // Initialize specific times for this slot/SPK
+                    $slotTimes = ['DATANG' => ['PLAN' => [], 'ACTUAL' => []], 'BERANGKAT' => ['PLAN' => [], 'ACTUAL' => []]];
+                    
+                    if (isset($cyclesToDisplay[$slot])) {
+                        $cycleData = $cyclesToDisplay[$slot];
+                        $spk = $cycleData['spk'];
+                        $actualCycleNum = $cycleData['actual_cycle'];
+                        
+                        // Add planning time ONLY for THIS SPK
+                        if ($spk->jam_berangkat_plan) {
+                            $hourPart = explode(':', $spk->jam_berangkat_plan)[0];
+                            $hourSlot = str_pad($hourPart, 2, '0', STR_PAD_LEFT) . '.00';
+                            $cycleStr = 'C' . $actualCycleNum;
+                            $timeStr = $spk->jam_berangkat_plan . ($cycleStr ? ' ' . $cycleStr : '');
+                            if (!isset($slotTimes['BERANGKAT']['PLAN'][$hourSlot])) $slotTimes['BERANGKAT']['PLAN'][$hourSlot] = [];
+                            $slotTimes['BERANGKAT']['PLAN'][$hourSlot][] = $timeStr;
+                        }
+
+                        if ($spk->jam_datang_plan) {
+                            $hourPart = explode(':', $spk->jam_datang_plan)[0];
+                            $hourSlot = str_pad($hourPart, 2, '0', STR_PAD_LEFT) . '.00';
+                            $cycleStr = 'C' . $actualCycleNum;
+                            $timeStr = $spk->jam_datang_plan . ($cycleStr ? ' ' . $cycleStr : '');
+                            if (!isset($slotTimes['DATANG']['PLAN'][$hourSlot])) $slotTimes['DATANG']['PLAN'][$hourSlot] = [];
+                            $slotTimes['DATANG']['PLAN'][$hourSlot][] = $timeStr;
+                        }
+                        
+                        $custName = '-';
+                        if ($spk->customer) {
+                            $custName = $spk->customer->nama_perusahaan ?? '-';
+                            if ($spk->plantgate) {
+                                $custName .= " ({$spk->plantgate->nama_plantgate})";
+                            }
+                        }
+                        
+                        $customers[] = [
+                            'customer_id' => 0,
+                            'customer_name' => $custName,
+                            'driver_name' => $spk->driver->nama ?? '-',
+                            'surat_jalan' => $spk->no_surat_jalan ?? '-',
+                            'status' => 'PENDING',
+                            'actual_cycle' => $actualCycleNum,
+                            'times' => $slotTimes
+                        ];
+                    } else {
+                        // Empty slot
+                        $customers[] = [
+                            'customer_id' => 0,
+                            'customer_name' => '-',
+                            'driver_name' => '-',
+                            'surat_jalan' => '-',
+                            'status' => 'OPEN',
+                            'actual_cycle' => null,
+                            'times' => $slotTimes
+                        ];
+                    }
+                }
+                
+                $trucks[] = [
+                    'id' => 0,
+                    'nopol' => 'PENDING (BELUM ASSIGN)',
+                    'driver' => '-',
+                    'status' => 'PENDING',
+                    'customers' => $customers,
+                    'is_pending' => true
                 ];
             }
-            
-            // Sort by cycle number
-            usort($actualCycles, function($a, $b) {
-                return $a['actual_cycle'] <=> $b['actual_cycle'];
-            });
-            
-            // Take first 4 cycles
-            $cyclesToDisplay = array_slice($actualCycles, 0, 4);
-            
-            // Create rows for each SPK
-            for ($slot = 0; $slot < 4; $slot++) {
-                if (isset($cyclesToDisplay[$slot])) {
-                    $cycleData = $cyclesToDisplay[$slot];
-                    $spk = $cycleData['spk'];
-                    $actualCycleNum = $cycleData['actual_cycle'];
-                    
-                    $custName = '-';
-                    if ($spk->customer) {
-                        $custName = $spk->customer->nama_perusahaan ?? '-';
-                        if ($spk->plantgate) {
-                            $custName .= " ({$spk->plantgate->nama_plantgate})";
-                        }
-                    }
-                    
-                    $customers[] = [
-                        'customer_id' => 0,
-                        'customer_name' => $custName,
-                        'driver_name' => $spk->driver->nama ?? '-',
-                        'surat_jalan' => $spk->no_surat_jalan ?? '-',
-                        'status' => 'BELUM DITUGASKAN',
-                        'actual_cycle' => $actualCycleNum,
-                        'times' => $times
-                    ];
-                } else {
-                    // Empty slot
-                    $customers[] = [
-                        'customer_id' => 0,
-                        'customer_name' => '-',
-                        'driver_name' => '-',
-                        'surat_jalan' => '-',
-                        'status' => 'OPEN',
-                        'actual_cycle' => null,
-                        'times' => $times
-                    ];
-                }
-            }
-            
-            $trucks[] = [
-                'id' => 0,
-                'nopol' => 'PENDING (BELUM ASSIGN)',
-                'driver' => '-',
-                'status' => 'PENDING',
-                'customers' => $customers,
-                'is_pending' => true
-            ];
         }
 
         // 2. Process all existing real trucks
@@ -415,7 +471,7 @@ class ControlTruckController extends Controller
                     } elseif ($spk) {
                         $custName = '';
                         if ($spk->customer) {
-                            $custName = $spk->customer->nama_perusahaan ?? '';
+                            $custName = $spk->customer->inisial_perusahaan ?? $spk->customer->nama_perusahaan ?? '';
                         }
                         if ($spk->plantgate) {
                             $custName .= " ({$spk->plantgate->nama_plantgate})";

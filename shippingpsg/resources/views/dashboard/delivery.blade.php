@@ -73,7 +73,7 @@
 @endpush
 
 @section('content')
-<div class="space-y-4 bg-slate-50 min-h-screen font-sans">
+<div x-data="{ viewMode: 'list' }" class="space-y-4 bg-slate-50 min-h-screen font-sans">
     
     {{-- Header & Filters --}}
     <div class="glass-card p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -89,6 +89,15 @@
             </div>
         </div>
         
+        <div class="flex items-center bg-slate-100 p-1 rounded-lg">
+            <button @click="viewMode = 'list'" :class="viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'" class="px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5">
+                <i class="fas fa-list"></i> List
+            </button>
+            <button @click="viewMode = 'chart'" :class="viewMode === 'chart' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'" class="px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5">
+                <i class="fas fa-chart-pie"></i> Chart
+            </button>
+        </div>
+
         <form action="" method="GET" class="flex flex-wrap items-center gap-3">
              <div class="relative group">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
@@ -258,7 +267,7 @@
     </div>
 
     {{-- Detailed Table --}}
-    <div class="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden">
+    <div x-show="viewMode === 'list'" class="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
@@ -307,6 +316,47 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    {{-- Chart View (New Summary Mode) --}}
+    <div x-show="viewMode === 'chart'" style="display: none;" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card p-6">
+            <h3 class="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+                <i class="fas fa-check-circle text-blue-500"></i> Fulfillment Status Composition
+            </h3>
+            <div id="fulfillmentStatusChart" class="w-full h-80"></div>
+        </div>
+
+        <div class="glass-card p-6 flex flex-col justify-between">
+            <div>
+                 <h3 class="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider">Item Performance Summary</h3>
+                 <div class="space-y-6">
+                    @foreach($deliveryStatusSummary as $status => $count)
+                    @php
+                        $color = $status == 'EXCELLENT' ? 'blue' : ($status == 'GOOD' ? 'emerald' : 'red');
+                        $percent = count($performanceData) > 0 ? ($count / count($performanceData)) * 100 : 0;
+                    @endphp
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-black text-{{ $color }}-600 uppercase">{{ $status }}</span>
+                            <span class="text-xs font-bold text-slate-500">{{ $count }} Items ({{ round($percent, 1) }}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                            <div class="bg-{{ $color }}-500 h-full rounded-full transition-all duration-1000" style="width: {{ $percent }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+                 </div>
+            </div>
+
+            <div class="mt-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <p class="text-[10px] text-slate-500 leading-relaxed italic">
+                    * <strong>EXCELLENT</strong>: Service Rate ≥ 100%. Terkirim sesuai atau melebihi rencana.<br>
+                    * <strong>GOOD</strong>: Service Rate 90-99%. Sebagian besar rencana terpenuhi.<br>
+                    * <strong>POOR</strong>: Service Rate < 90%. Perlu perhatian khusus pada produksi/pengiriman.
+                </p>
+            </div>
         </div>
     </div>
 </div>
@@ -444,5 +494,41 @@
             });
         }
     }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- ApexChart: Fulfillment Status Composition ---
+        const statusOptions = {
+            series: [{{ $deliveryStatusSummary['EXCELLENT'] }}, {{ $deliveryStatusSummary['GOOD'] }}, {{ $deliveryStatusSummary['POOR'] }}],
+            chart: {
+                height: 350,
+                type: 'donut',
+            },
+            labels: ['EXCELLENT', 'GOOD', 'POOR'],
+            colors: ['#3b82f6', '#10b981', '#ef4444'],
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '75%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: 'TOTAL ITEMS',
+                                formatter: function (w) {
+                                    return w.globals.seriesTotals.reduce((a, b) => a + b, 0)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            legend: { position: 'bottom' }
+        };
+
+        const statusChart = new ApexCharts(document.querySelector("#fulfillmentStatusChart"), statusOptions);
+        statusChart.render();
+    });
 </script>
 @endpush

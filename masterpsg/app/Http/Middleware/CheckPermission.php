@@ -25,7 +25,7 @@ class CheckPermission
         $user = User::find($userId);
         
         if (!$user) {
-            return redirect()->away('http://mwtpsg.test/login');
+            return redirect()->away(env('URL_MASTER') . '/login');
         }
         
         // Superadmin bisa akses semua

@@ -157,6 +157,31 @@
     </div>
 </div>
 
+{{-- Modal Notification --}}
+<div id="stockWarningModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-fade-in relative">
+        <div class="mb-4 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900" id="modalTitle">Stock Tidak Mencukupi!</h3>
+            <p class="text-sm text-gray-500 mt-2">
+                Qty PO (<span id="modalQtyPo" class="font-bold text-red-600">0</span>) lebih besar dari Stock Tersedia (<span id="modalStock" class="font-bold text-green-600">0</span>).
+            </p>
+            <p class="text-sm font-medium text-red-600 mt-2">
+                Part ini harus diprioritaskan produksinya!
+            </p>
+        </div>
+        <div class="mt-6 flex justify-center">
+            <button onclick="closeWarningModal()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm">
+                Mengerti (Prioritaskan)
+            </button>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -167,7 +192,65 @@
             allowClear: true,
             width: '100%'
         });
+
+        // Stock Check Logic
+        let currentStock = null;
+        let warnedForQty = 0;
+
+        const selectPart = $('.select2-part');
+        const qtyInput = $('input[name="qty"]');
+        
+        // Listen to Select2 change
+        selectPart.on('change', function() {
+            const partId = $(this).val();
+            if(partId) {
+                // Fetch Stock
+                fetch(`{{ url('shipping/stock/po/api/part-stock') }}/${partId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        currentStock = parseFloat(data.current_stock);
+                        warnedForQty = 0; // Reset warning
+                        checkStock();
+                    })
+                    .catch(e => console.error("Stock check error", e));
+            } else {
+                currentStock = null;
+            }
+        });
+
+        qtyInput.on('input', function() {
+            checkStock();
+        });
+
+        function checkStock() {
+            const qty = parseFloat(qtyInput.val()) || 0;
+            
+            if (currentStock !== null && qty > 0) {
+                 if (qty > currentStock) {
+                     if (warnedForQty !== qty) {
+                         showWarning(currentStock, qty);
+                         warnedForQty = qty;
+                     }
+                 } else {
+                     warnedForQty = 0;
+                 }
+            }
+        }
     });
+
+    function showWarning(stock, qty) {
+        document.getElementById('modalStock').textContent = stock.toLocaleString();
+        document.getElementById('modalQtyPo').textContent = qty.toLocaleString();
+        const modal = document.getElementById('stockWarningModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    window.closeWarningModal = function() {
+        const modal = document.getElementById('stockWarningModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
 </script>
 @endpush
 @endsection

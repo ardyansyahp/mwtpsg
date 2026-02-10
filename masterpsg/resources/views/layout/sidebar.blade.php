@@ -1,27 +1,11 @@
 <aside id="sidebar" class="flex-col w-64 bg-white border-r border-gray-200 transition-all duration-300 md:relative fixed inset-y-0 left-0 z-50 h-full overflow-y-auto">
     <nav class="p-4 flex flex-col sidebar-scroll min-h-full">
         @php
-            // Dynamic URL Generation for Cross-App Navigation
-            // This handles 'mwtpsg.test/appname/public' OR 'localhost/mwtpsg/appname/public' AND 'appname.test' scenarios automatically.
-            
-            $currentBase = url('/');
-            $currentFolderName = basename(base_path()); // e.g., 'masterpsg'
-
-            // Check if folder name exists in the current URL (e.g. localhost/mwtpsg/masterpsg/public)
-            // If not found, we assume root delegation (e.g. http://mwtpsg.test/)
-            if (strpos($currentBase, $currentFolderName) === false) {
-                // Root delegation setup
-                $masterUrl = $currentBase;
-                $supplierUrl = rtrim($currentBase, '/') . '/supplierpsg/public';
-                $shippingUrl = rtrim($currentBase, '/') . '/shippingpsg/public';
-                $managementUrl = rtrim($currentBase, '/') . '/managementmwt/public';
-            } else {
-                // Directory based setup
-                $masterUrl = str_replace($currentFolderName, 'masterpsg', $currentBase);
-                $supplierUrl = str_replace($currentFolderName, 'supplierpsg', $currentBase);
-                $shippingUrl = str_replace($currentFolderName, 'shippingpsg', $currentBase);
-                $managementUrl = str_replace($currentFolderName, 'managementmwt', $currentBase);
-            }
+            // URLs from .env (Works for both Local & Production)
+            $masterUrl = env('URL_MASTER');
+            $supplierUrl = env('URL_SUPPLIER');
+            $shippingUrl = env('URL_SHIPPING');
+            $managementUrl = env('URL_MANAGEMENT');
         @endphp
 
         <div class="px-4 pb-4 mb-4 border-b border-gray-100">

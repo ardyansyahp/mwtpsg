@@ -102,32 +102,45 @@
                  </div>
 
                  <!-- Container -->
-                 <div id="partProgressContainer" class="relative group">
-                    <div id="partSlider" class="md:block md:space-y-3 flex md:flex-col overflow-x-hidden md:overflow-visible transition-all duration-300">
-                        @foreach($progress as $id => $p)
+                 <div id="partProgressContainer" class="relative group overflow-hidden">
+                    <div id="partSlider" class="md:block md:space-y-3 flex transition-all duration-300">
+                        @foreach($progress as $rowId => $p)
                         <!-- Card Item -->
-                        <div class="w-full md:w-auto flex-shrink-0 bg-white border border-gray-100 rounded-lg p-3 shadow-sm transition-transform duration-300 part-card" 
-                             id="part-row-{{ $id }}" 
+                        <div class="w-full md:w-auto flex-shrink-0 bg-white border border-gray-100 rounded-lg p-3 shadow-sm transition-transform duration-300 part-card {{ $p['is_active'] ? 'ring-2 ring-blue-500 bg-blue-50' : '' }}" 
+                             id="part-row-{{ $rowId }}" 
+                             data-part-id="{{ $p['part_id'] }}"
                              data-index="{{ $loop->index }}" 
                              data-previous="{{ $p['previous_scanned'] }}"
                              data-target="{{ $p['target'] }}">
+                            @if($p['is_active'])
+                                <span class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg z-10">Scanning Here</span>
+                            @endif
                             <div class="flex justify-between items-start mb-2">
                                  <div>
                                      <p class="font-bold text-gray-800 text-xs md:text-sm">{{ $p['part_nomor'] }}</p>
                                      <p class="text-[10px] md:text-xs text-gray-500">{{ $p['part_nama'] }}</p>
+                                     <span class="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-50 text-blue-600 border border-blue-100 mb-1">
+                                         PO: {{ $p['po_number'] }}
+                                     </span>
                                  </div>
-                                 <div class="text-right">
+                                 <div class="text-right flex items-center gap-2">
+                                     <button type="button" 
+                                             onclick="openManualInput({{ $p['part_id'] }}, '{{ $p['part_nomor'] }}', {{ $p['qty_packing'] }}, {{ $p['balance'] }})" 
+                                             class="text-[10px] flex items-center gap-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full transition-colors font-bold border border-yellow-200">
+                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                         Manual
+                                     </button>
                                      <span class="text-[10px] md:text-xs font-mono bg-gray-100 px-2 py-1 rounded">Target: {{ $p['target'] }}</span>
                                  </div>
                             </div>
                             <div class="w-full bg-gray-100 rounded-full h-2 md:h-2.5 mb-1">
-                                <div class="bg-indigo-600 h-2 md:h-2.5 rounded-full transition-all duration-500" 
-                                     id="progress-bar-{{ $id }}"
-                                     style="width: {{ $p['target'] > 0 ? ($p['scanned'] / $p['target'] * 100) : 0 }}%"></div>
+                                 <div class="bg-indigo-600 h-2 md:h-2.5 rounded-full transition-all duration-500" 
+                                      id="progress-bar-{{ $rowId }}"
+                                      style="width: {{ $p['target'] > 0 ? min(100, ($p['scanned'] / $p['target'] * 100)) : 0 }}%"></div>
                             </div>
                             <div class="flex justify-between text-[10px] md:text-xs text-gray-600">
-                                 <span>Scanned: <strong id="val-scanned-{{ $id }}" class="text-indigo-600">{{ $p['scanned'] }}</strong></span>
-                                 <span>Balance: <strong id="val-balance-{{ $id }}" class="text-red-500">{{ $p['balance'] }}</strong></span>
+                                 <span>Scanned: <strong id="val-scanned-{{ $rowId }}" class="text-indigo-600">{{ $p['scanned'] }}</strong></span>
+                                 <span>Balance: <strong id="val-balance-{{ $rowId }}" class="text-red-500">{{ ($p['target'] - $p['scanned'] < 0) ? '+' . abs($p['target'] - $p['scanned']) : $p['target'] - $p['scanned'] }}</strong></span>
                             </div>
                         </div>
                         @endforeach
@@ -138,13 +151,13 @@
 
         {{-- Right Column: History --}}
         <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 h-full flex flex-col max-h-[800px]">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col">
                 <div class="p-3 md:p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-xl">
                     <h3 class="font-semibold text-gray-800 text-sm md:text-base">Scan History</h3>
                     <span class="bg-blue-100 text-blue-700 text-[10px] md:text-xs px-2 py-0.5 rounded-full font-bold" id="scanCount">0</span>
                 </div>
                 
-                <div class="flex-1 overflow-y-auto" id="scanHistoryContainer">
+                <div class="flex-1 overflow-y-auto max-h-[350px]" id="scanHistoryContainer">
                     <ul id="scanList" class="divide-y divide-gray-100">
                         <!-- Loaded via JS or empty initially since cycle logic separates views -->
                     </ul>
@@ -237,13 +250,22 @@
         }
     }
 
-    // Input Handling
+    // --- SCANNER INPUT LOGIC ---
     let typingTimer;
-    scannerInput.addEventListener('input', (e) => {
+    let isProcessing = false;
+    const doneTypingInterval = 80; // Faster response (80ms) - Tuned for scanner speed
+
+    scannerInput.addEventListener('input', () => {
         clearTimeout(typingTimer);
-        const val = scannerInput.value;
-        if (val.length > 5 && val.includes('|')) {
-            typingTimer = setTimeout(() => handleScan(val.trim()), 300);
+        // Simple check: if valid length, wait briefly then submit
+        if (scannerInput.value.trim().length > 5) {
+            typingTimer = setTimeout(() => {
+                const val = scannerInput.value.trim();
+                // Check if it looks like a barcode (contains pipe) or just long enough
+                if (val && !isProcessing) {
+                     handleScan(val);
+                }
+            }, doneTypingInterval);
         }
     });
 
@@ -251,7 +273,8 @@
         if (e.key === 'Enter') {
             e.preventDefault();
             clearTimeout(typingTimer);
-            if (scannerInput.value.trim()) handleScan(scannerInput.value.trim());
+            const val = scannerInput.value.trim();
+            if (val && !isProcessing) handleScan(val);
         }
     });
 
@@ -264,7 +287,13 @@
         }
     });
 
+    // Track over-scan attempts to warn user
+    let overScanAttempts = {};
+
     async function handleScan(barcode) {
+        if (isProcessing) return;
+        isProcessing = true;
+        
         // Optimistic UI clear
         scannerInput.value = '';
         scannerInput.focus();
@@ -291,18 +320,73 @@
             if (result.success) {
                 playBeep('success');
                 showStatus('Success: ' + result.message, 'text-green-600');
-                
-                // Add to History
                 addToHistory(result.data);
-                
-                // Refresh Page Data (Progress Bars & Totals)
                 updateStats(); 
+                if (result.data.part_id) slideToPart(result.data.part_id);
                 
-                // Auto-slide to the part (Mobile UX)
-                if (result.data.part_id) {
-                    slideToPart(result.data.part_id);
+                // Clear overscan attempt if successful
+                if (result.data.part_id) delete overScanAttempts[result.data.part_id];
+
+            } else {
+                // Handle Over Qty -> REJECT (Change requested by user)
+                if (result.message && result.message.startsWith('OVER_QTY_NEEDS_REASON')) {
+                    const cleanMsg = result.message.split('|')[1];
+                    
+                    playBeep('error');
+                    // Alert warning only
+                    let msg = `⚠️ KELEBIHAN QUANTITY!\n\n${cleanMsg.replace('(Catatan SPK:', '\n\n📝 Catatan SPK:').replace(')', '')}\n\n`;
+                    msg += `🚫 Scan DITOLAK.\nHarap input manual sisa barang karena jumlah tidak sesuai Standard Packing.`;
+                    
+                    alert(msg);
+                    
+                    showStatus('Scan Ditolak: Over Qty', 'text-red-600');
+                    return;
                 }
+
+                playBeep('error');
+                showStatus('Error: ' + result.message, 'text-red-600');
                 
+                // If it's a generic error but potentially related to logic (like not found), we alert
+                alert('GAGAL: ' + result.message);
+            }
+        } catch (e) {
+            console.error(e);
+            playBeep('error');
+            showStatus('System Error', 'text-red-600');
+        } finally {
+            isProcessing = false;
+            scannerInput.focus();
+        }
+    }
+
+    async function handleScanWithReason(barcode, reason) {
+        try {
+            showStatus('Processing with reason...', 'text-blue-500');
+            
+            const response = await fetch('{{ route("finishgood.out.store") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    lot_number: barcode,
+                    spk_id: MODEL_SPK_ID,
+                    cycle: currentCycle,
+                    catatan: reason
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                playBeep('success');
+                showStatus('Success: ' + result.message, 'text-green-600');
+                addToHistory(result.data);
+                updateStats();
+                if (result.data.part_id) slideToPart(result.data.part_id);
+                delete overScanAttempts[barcode];
             } else {
                 playBeep('error');
                 showStatus('Error: ' + result.message, 'text-red-600');
@@ -349,35 +433,43 @@
                 let totalBal = 0;
 
                 json.data.forEach(part => {
-                    const row = document.getElementById(`part-row-${part.part_id}`);
+                    const row = document.getElementById(`part-row-${part.detail_id}`);
                     if (row) {
-                       // Get Global Data
-                       const prevScanned = parseInt(row.dataset.previous) || 0;
-                       const target = parseInt(row.dataset.target) || 0;
-                       const localScanned = part.qty_scanned;
-                       
-                       // Calculate Global Stats
-                       const globalScannedTotal = prevScanned + localScanned;
-                       const globalBalance = Math.max(0, target - globalScannedTotal);
+                       // API now returns GLOBAL Scanned/Balance
+                       const globalScanned = part.qty_scanned;
+                       const globalBalance = part.qty_balance;
+                       const globalTarget = part.qty_plan;
                        
                        // Update Text
-                       document.getElementById(`val-scanned-${part.part_id}`).textContent = localScanned;
-                       document.getElementById(`val-balance-${part.part_id}`).textContent = globalBalance;
+                       document.getElementById(`val-scanned-${part.detail_id}`).textContent = globalScanned;
                        
-                       // Update Bar (Progress based on Global Coverage against Original Target)
-                       // Or Local Progress? User wants Global View likely.
-                       // Let's visualize Global Progress: (Total Scanned / Target * 100)
-                       const pct = target > 0 ? (globalScannedTotal / target * 100) : 0;
-                       document.getElementById(`progress-bar-${part.part_id}`).style.width = `${pct}%`;
+                       const balanceEl = document.getElementById(`val-balance-${part.detail_id}`);
+                       if (globalBalance < 0) {
+                            balanceEl.textContent = '+' + Math.abs(globalBalance);
+                       } else {
+                            balanceEl.textContent = globalBalance;
+                       }
+                       
+                       // Update Bar
+                       const pct = globalTarget > 0 ? Math.min(100, (globalScanned / globalTarget * 100)) : 0;
+                       const bar = document.getElementById(`progress-bar-${part.detail_id}`);
+                       if(bar) bar.style.width = `${pct}%`;
 
-                       totalScan += localScanned;     // Header: Scanned (Local)
-                       totalBal += globalBalance;     // Header: Balance (Global)
+                       totalScan += globalScanned;
+                       totalBal += globalBalance;
+                       
+                       // Update Active State
+                       if (part.is_active) {
+                           row.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+                       } else {
+                           row.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+                       }
                     }
                 });
 
                 // Update Grand Totals
                 document.getElementById('grandTotalScanned').textContent = totalScan.toLocaleString();
-                document.getElementById('grandTotalBalance').textContent = totalBal.toLocaleString();
+                document.getElementById('grandTotalBalance').textContent = totalBal < 0 ? '+' + Math.abs(totalBal).toLocaleString() : totalBal.toLocaleString();
             }
         } catch (e) {
             console.error("Failed to update stats", e);
@@ -672,11 +764,7 @@
         mobileNavControls.style.display = totalSlides > 1 ? 'flex' : 'none';
         
         // Slide Logic
-        const offset = currentSlide * -100;
-        // Apply transform to navigate (only on mobile flex container)
-        // Since we used flex row on mobile, translateX works perfectly on the container if we wrap items properly or move the container.
-        // Wait, my HTML structure: #partSlider is flex-row. Moving it moves all items.
-        // Each item is w-full flex-shrink-0.
+        const offset = totalSlides > 0 ? (currentSlide * -100 / totalSlides) : 0;
         sliderContainer.style.transform = `translateX(${offset}%)`;
         
         // Update Indicator
@@ -731,7 +819,7 @@
         if (window.innerWidth >= 768) return;
 
         // Find index of the card with this partId
-        const targetCard = document.getElementById(`part-row-${partId}`);
+        const targetCard = document.querySelector(`.part-card[data-part-id="${partId}"]`);
         if (targetCard) {
             const index = parseInt(targetCard.getAttribute('data-index'));
             if (!isNaN(index)) {
@@ -740,5 +828,61 @@
             }
         }
     }
+
+    // --- MANUAL INPUT LOGIC ---
+    window.openManualInput = async function(partId, partNomor, stdPack, balance) {
+        // 1. Client Side Validation
+        if (stdPack > 0 && balance >= stdPack) {
+            alert(`⛔ TIDAK BISA INPUT MANUAL!\n\nSisa Balance (${balance}) masih cukup untuk packing standar (${stdPack}).\nSilakan scan barcode box standard!`);
+            return;
+        }
+
+        // 2. Prompt Qty
+        const qtyInput = prompt(`⚠️ INPUT MANUAL: ${partNomor}\n\nBalance: ${balance}\nStd Packing: ${stdPack}\n\nMasukkan jumlah barang (Qty):`, balance);
+        
+        if (qtyInput === null) return; 
+        const qty = parseInt(qtyInput);
+        
+        if (isNaN(qty) || qty <= 0) {
+            alert("Jumlah tidak valid!");
+            return;
+        }
+
+        const reason = "Manual Input (Sisa/Non-Standard)";
+
+        // 4. Submit
+        try {
+            showStatus('Processing Manual...', 'text-blue-500');
+            const response = await fetch('{{ route("finishgood.out.store-manual") }}', {
+                 method: 'POST',
+                 headers: { 
+                     'Content-Type': 'application/json',
+                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                 },
+                 body: JSON.stringify({
+                     spk_id: MODEL_SPK_ID,
+                     part_id: partId,
+                     cycle: currentCycle,
+                     qty: qty,
+                     catatan: reason
+                 })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                 playBeep('success');
+                 alert("✅ Berhasil Input Manual!");
+                 window.location.reload(); 
+            } else {
+                 playBeep('error');
+                 alert("❌ Gagal: " + result.message);
+                 showStatus('Error Manual Input', 'text-red-600');
+            }
+        } catch (e) {
+            console.error(e);
+            alert("System Error: " + e.message);
+        }
+    };
+
 </script>
 @endpush

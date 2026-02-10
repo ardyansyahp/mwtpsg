@@ -216,9 +216,12 @@
                                         <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">NAMA PART</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">JENIS PART</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">TIPE PART</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">PILIH PO</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">STD QTY PACKING (PCS/BOX)</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">JADWAL DELIVERY (PCS)</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">JUMLAH PULLING (BOX)</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider bg-blue-600">CATATAN (ALASAN)</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider bg-blue-600">AKSI</th>
                                     </tr>
                                 </thead>
                                 <tbody id="partsTableBody" class="bg-white divide-y divide-gray-200">
@@ -343,7 +346,7 @@
         }
 
         try {
-            const response = await fetch(`/spk/api/plantgates?customer_id=${customerId}`);
+            const response = await fetch(`{{ route('spk.api.plantgates') }}?customer_id=${customerId}`);
             const data = await response.json();
             
             if (data.success) {
@@ -380,7 +383,7 @@
         }
 
         try {
-            const response = await fetch(`/spk/api/parts?plantgate_id=${plantgateId}`);
+            const response = await fetch(`{{ route('spk.api.parts') }}?plantgate_id=${plantgateId}`);
             const data = await response.json();
             
             if (data.success && data.data.length > 0) {
@@ -412,7 +415,6 @@
             row.className = 'hover:bg-gray-50';
             
             const stdQtyPacking = part.QTY_Packing_Box || 0;
-            // Format model_part: regular -> Reguler, ckd -> CKD, cbu -> CBU, rempart -> Rempart
             const modelPartMap = {
                 'regular': 'Reguler',
                 'ckd': 'CKD',
@@ -427,8 +429,18 @@
                 <td class="px-4 py-3 text-sm text-gray-900">${part.nama_part}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${modelPart}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${part.tipe_id || '-'}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${stdQtyPacking}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
+                    <select 
+                        name="details[${index}][po_customer_id]" 
+                        class="w-48 px-2 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-xs bg-blue-50 po-select"
+                        data-part-id="${part.id}"
+                        data-loaded="false"
+                    >
+                        <option value="">-- Pilih PO --</option>
+                    </select>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${stdQtyPacking}</td>
+                <td class="px-4 py-3 whitespace-nowrap relative">
                     <input 
                         type="hidden" 
                         name="details[${index}][part_id]" 
@@ -446,9 +458,10 @@
                         data-std-qty="${stdQtyPacking}"
                         min="0"
                         value="0"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 transition-colors"
                         placeholder="0"
                     >
+                    <div class="text-xs text-orange-600 mt-1 hidden" id="warning-${index}"></div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                     <input 
@@ -460,35 +473,81 @@
                         class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700"
                         placeholder="0"
                     >
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
                     <input 
-                        type="hidden" 
+                        type="text" 
                         name="details[${index}][catatan]" 
+                        id="catatan-${index}"
                         value=""
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="Catatan packing..."
                     >
+                </td>
+                <td class="px-4 py-3 text-center whitespace-nowrap">
+                    <button type="button" onclick="duplicateRow(this)" class="text-blue-600 hover:text-blue-800 p-1 bg-blue-50 rounded-full transition-colors" title="Split Part (Tambah Baris)">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    </button>
+                    ${index > 9999 ? `
+                    <button type="button" onclick="removeRow(this)" class="text-red-600 hover:text-red-800 p-1 bg-red-50 rounded-full transition-colors ml-1" title="Hapus Baris">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>` : ''}
                 </td>
             `;
             
             partsTableBody.appendChild(row);
             
+            attachRowListeners(row, index);
+        });
+    }
+
+    // Helper to attach listeners (Extracting logic from generatePartsTable to reuse)
+    function attachRowListeners(row, index) {
             // Add event listener for auto-calculation and validation
             const jadwalInput = row.querySelector('[data-part-index]');
             const pullingBoxInput = row.querySelector('[data-pulling-box]');
+            const catatanInput = row.querySelector(`[name*="[catatan]"]`);
+            const warningDiv = row.querySelector('[id^="warning-"]'); // Flexible selector
             
             if (jadwalInput && pullingBoxInput) {
-                jadwalInput.addEventListener('change', function() {
-                     validateQuantity(this, pullingBoxInput);
-                });
-                
-                jadwalInput.addEventListener('input', function() {
-                     // Recalculate usage while typing, but validate strict on change
-                     const stdQty = parseFloat(this.getAttribute('data-std-qty')) || 0;
-                     const jadwalDelivery = parseFloat(this.value) || 0;
+                // Function to handle validation logic
+                const handleValidation = () => {
+                     const stdQty = parseFloat(jadwalInput.getAttribute('data-std-qty')) || 0;
+                     const jadwalDelivery = parseFloat(jadwalInput.value) || 0;
                      
                      // Calculate jumlah pulling box: ceil(jadwal_delivery / std_qty)
                      const jumlahPullingBox = (stdQty > 0 && jadwalDelivery > 0) ? Math.ceil(jadwalDelivery / stdQty) : 0;
                      pullingBoxInput.value = jumlahPullingBox;
 
-                     // UX: Highlight row if value > 0
+                     // Strict logic removal: Check if non-standard
+                     if (jadwalDelivery > 0 && stdQty > 0 && jadwalDelivery % stdQty !== 0) {
+                         const remainder = jadwalDelivery % stdQty;
+                         const fullBoxes = Math.floor(jadwalDelivery / stdQty);
+                         
+                         // Show warning
+                         if(warningDiv) {
+                             warningDiv.textContent = `⚠️ Non-std: ${fullBoxes} Box + ${remainder} Pcs`;
+                             warningDiv.classList.remove('hidden');
+                         }
+                         
+                         // Visual cues
+                         jadwalInput.classList.add('border-orange-500', 'bg-orange-50');
+                         if(catatanInput) {
+                             catatanInput.classList.add('border-orange-500', 'ring-1', 'ring-orange-500');
+                             catatanInput.placeholder = "WAJIB ISI ALASAN!";
+                         }
+                         
+                     } else {
+                         // Reset warning
+                         if(warningDiv) warningDiv.classList.add('hidden');
+                         jadwalInput.classList.remove('border-orange-500', 'bg-orange-50');
+                         if(catatanInput) {
+                             catatanInput.classList.remove('border-orange-500', 'ring-1', 'ring-orange-500');
+                             catatanInput.placeholder = "Catatan packing...";
+                         }
+                     }
+
+                     // Highlight active row
                      if (jadwalDelivery > 0) {
                          row.classList.add('bg-blue-50');
                          row.classList.remove('hover:bg-gray-50');
@@ -496,50 +555,159 @@
                          row.classList.remove('bg-blue-50');
                          row.classList.add('hover:bg-gray-50');
                      }
+                };
+
+                jadwalInput.addEventListener('input', handleValidation);
+                jadwalInput.addEventListener('change', handleValidation);
+            }
+
+            // Lazy Load POs
+            const poSelect = row.querySelector('.po-select');
+            if (poSelect) {
+                poSelect.addEventListener('focus', async function() {
+                    if (this.getAttribute('data-loaded') === 'true') return;
+                    
+                    const partId = this.getAttribute('data-part-id');
+                    this.innerHTML = '<option value="">Loading...</option>';
+                    
+                    try {
+                        const response = await fetch(`{{ url('shipping/stock/po/api/part-po') }}/${partId}`);
+                        const data = await response.json();
+                        
+                        this.innerHTML = '<option value="">-- Pilih PO --</option>';
+                        if (data.length > 0) {
+                            data.forEach(po => {
+                                const option = document.createElement('option');
+                                option.value = po.id;
+                                option.textContent = po.text;
+                                this.appendChild(option);
+                            });
+                        } else {
+                            const option = document.createElement('option');
+                            option.value = "";
+                            option.textContent = "Tidak ada PO Aktif";
+                            this.appendChild(option);
+                        }
+                        this.setAttribute('data-loaded', 'true');
+                    } catch (e) {
+                         console.error("Failed to load POs", e);
+                         this.innerHTML = '<option value="">Error Loading</option>';
+                    }
                 });
             }
-        });
     }
 
-    function validateQuantity(input, pullingBoxInput) {
-        const stdQty = parseFloat(input.getAttribute('data-std-qty')) || 0;
-        const value = parseFloat(input.value) || 0;
+    // Global Functions for Row Actions
+    window.duplicateRow = function(btn) {
+        const row = btn.closest('tr');
+        const clone = row.cloneNode(true);
+        const uniqueId = Date.now(); // Unique index for new row
         
-        if (value > 0 && stdQty > 0) {
-            if (value % stdQty !== 0) {
-                alert(`Jadwal Delivery untuk item ini harus kelipatan Standard Packing (${stdQty} Pcs)!\nContoh: ${stdQty}, ${stdQty*2}, ${stdQty*3}...`);
-                
-                // Reset to nearest multiple or previous valid? 
-                // Let's just reset to 0 or focus
-                input.value = 0;
-                pullingBoxInput.value = 0;
-                input.focus();
-                return false;
-            }
+        // Update inputs
+        const inputs = clone.querySelectorAll('input, select');
+        inputs.forEach(input => {
+             // Update Name: details[OLD] -> details[NEW_ID]
+             const name = input.getAttribute('name');
+             if (name) {
+                 const newName = name.replace(/details\[\d+\]/, `details[${uniqueId}]`);
+                 input.setAttribute('name', newName);
+             }
+             
+             // Clear values
+             if (input.tagName === 'INPUT' && input.type === 'number') {
+                 if (input.name.includes('qty_packing_box') || input.name.includes('part_id')) {
+                    // Keep value (Part ID & Std Packing)
+                 } else {
+                    input.value = 0; // Reset Qty & Pulling
+                 }
+             } else if (input.tagName === 'INPUT' && input.type === 'text') {
+                 input.value = ''; // Clear Catatan
+             } else if (input.tagName === 'SELECT') {
+                 input.value = ''; // Reset PO
+                 input.setAttribute('data-loaded', 'false'); // Reset loaded flag
+                 input.innerHTML = '<option value="">-- Pilih PO --</option>'; // Reset options to force reload or keep if needed?
+                 // Better to keep options if already loaded? No, because validation logic relies on focus.
+                 // Actually po-select options are dynamically loaded. Cloning keeps them!
+                 // So we keep `data-loaded="true"`? No, POs might change? No POs are static for part.
+                 // So we can Keep options and keep loaded=true.
+                 // BUT we must reset the selection value.
+                 // cloneNode copies value? No, usually defaultValue.
+                 input.selectedIndex = 0;
+             }
+             
+             // Update IDs for Labels/Selectors
+             if (input.id) input.id = input.id.replace(/\d+$/, uniqueId);
+             
+             // Data attributes for logic
+             if (input.getAttribute('data-part-index') !== null) input.setAttribute('data-part-index', uniqueId);
+             if (input.getAttribute('data-pulling-box') !== null) input.setAttribute('data-pulling-box', uniqueId);
+        });
+
+        // Update Warning ID
+        const warningDiv = clone.querySelector('[id^="warning-"]');
+        if (warningDiv) {
+            warningDiv.id = `warning-${uniqueId}`;
+            warningDiv.classList.add('hidden');
+            warningDiv.textContent = '';
         }
-        return true;
+
+        // Update Remove Button visibility
+        // We added logic in generation: ${index > 9999 ? removeBtn : ''}
+        // Here we explicitly add remove button
+        const actionCell = clone.cells[clone.cells.length - 1];
+        // Ensure remove button exists
+        if (!actionCell.querySelector('button[onclick="removeRow(this)"]')) {
+             const removeBtn = document.createElement('button');
+             removeBtn.type = "button";
+             removeBtn.onclick = function() { removeRow(this); };
+             removeBtn.className = "text-red-600 hover:text-red-800 p-1 bg-red-50 rounded-full transition-colors ml-1";
+             removeBtn.title = "Hapus Baris";
+             removeBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+             actionCell.appendChild(removeBtn);
+        }
+
+        // Reset visual state
+        clone.classList.remove('bg-blue-50');
+        clone.classList.add('hover:bg-gray-50');
+        
+        // Insert after
+        row.parentNode.insertBefore(clone, row.nextSibling);
+
+        // Attach listeners
+        attachRowListeners(clone, uniqueId);
+    }
+
+    window.removeRow = function(btn) {
+        if(confirm('Hapus baris ini?')) {
+            btn.closest('tr').remove();
+        }
     }
 
     // Form submit
     form?.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Validate at least one part with jadwal delivery > 0
         const jadwalInputs = document.querySelectorAll('[name*="[jadwal_delivery_pcs]"]');
         let hasValidDelivery = false;
-        let isAllQuantitiesValid = true;
+        let isAllReasonProvided = true;
 
         jadwalInputs.forEach(input => {
             const val = parseFloat(input.value) || 0;
             const stdQty = parseFloat(input.getAttribute('data-std-qty')) || 0;
+            const row = input.closest('tr');
+            const catatanInput = row.querySelector('[name*="[catatan]"]');
 
             if (val > 0) {
                 hasValidDelivery = true;
+                // Check non-standard condition
                 if (stdQty > 0 && val % stdQty !== 0) {
-                    isAllQuantitiesValid = false;
-                    input.classList.add('border-red-500', 'ring-red-500');
-                } else {
-                    input.classList.remove('border-red-500', 'ring-red-500');
+                    // Check if reason is provided
+                    if (!catatanInput.value.trim()) {
+                        isAllReasonProvided = false;
+                        catatanInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        // Scroll to error
+                        catatanInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
             }
         });
@@ -549,8 +717,8 @@
             return;
         }
 
-        if (!isAllQuantitiesValid) {
-            alert('Ada input Jadwal Delivery yang tidak sesuai kelipatan Standard Packing. Mohon periksa kembali input yang berwarna merah.');
+        if (!isAllReasonProvided) {
+            alert('Mohon isi ALASAN pada kolom Catatan untuk item yang jumlahnya tidak sesuai Standard Packing (yang berwarna oranye/merah).');
             return;
         }
         
@@ -575,15 +743,15 @@
                 const partId = row.querySelector('[name*="[part_id]"]').value;
                 const qtyPackingBox = row.querySelector('[name*="[qty_packing_box]"]').value;
                 const jumlahPullingBox = row.querySelector('[name*="[jumlah_pulling_box]"]').value;
-                
+                const catatanInput = row.querySelector('[name*="[catatan]"]');
+                const poSelect = row.querySelector('[name*="[po_customer_id]"]');
+
                 filteredFormData.append(`details[${detailIndex}][part_id]`, partId);
                 filteredFormData.append(`details[${detailIndex}][qty_packing_box]`, qtyPackingBox);
                 filteredFormData.append(`details[${detailIndex}][jadwal_delivery_pcs]`, jadwalDelivery);
                 filteredFormData.append(`details[${detailIndex}][jumlah_pulling_box]`, jumlahPullingBox);
-                
-                // Catatan (opsional)
-                const catatanInput = row.querySelector('[name*="[catatan]"]');
                 filteredFormData.append(`details[${detailIndex}][catatan]`, catatanInput ? (catatanInput.value || '') : '');
+                filteredFormData.append(`details[${detailIndex}][po_customer_id]`, poSelect ? poSelect.value : '');
                 
                 detailIndex++;
             }

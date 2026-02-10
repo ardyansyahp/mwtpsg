@@ -117,6 +117,67 @@ class FinishGoodStockController extends Controller
         $activeIds = TFinishGoodOut::where('waktu_scan_out', '>=', Carbon::now()->subDays(60))->distinct()->pluck('part_id');
         $slowMoving = TStockFG::with('part')->where('qty', '>', 0)->whereNotIn('part_id', $activeIds)->orderBy('qty', 'desc')->limit(5)->get();
 
+        // 5. Stock Status Analysis for Charts
+        $statusCounts = [
+            'KRITIS' => 0,
+            'MINIM' => 0,
+            'SAFE' => 0,
+            'OVER' => 0
+        ];
+        $statusGroups = [
+            'KRITIS' => [],
+            'MINIM' => [],
+            'SAFE' => [],
+            'OVER' => []
+        ];
+
+        foreach($stocks as $s) {
+            $q = $s->qty;
+            $min = $s->part->min_stock ?? 0;
+            $max = $s->part->max_stock ?? 0;
+            $safeMin = $min * 2;
+
+            $status = 'SAFE';
+            if($max > 0 && $q > $max) $status = 'OVER';
+            elseif($min > 0 && $q < $min) $status = 'KRITIS';
+            elseif($min > 0 && $q < $safeMin) $status = 'MINIM';
+            
+            $statusCounts[$status]++;
+            if (count($statusGroups[$status]) < 10) { // Limit to top 10 per status for UI
+                $statusGroups[$status][] = [
+                    'nomor_part' => $s->part->nomor_part,
+                    'qty' => $q,
+                    'min' => $min,
+                    'max' => $max
+                ];
+            }
+        }
+
+        // 6. Trend Data for Line Chart (Daily In vs Out)
+        $daysInPeriod = $startDate->diffInDays($endDate) + 1;
+        $trendLabels = [];
+        $trendIn = [];
+        $trendOut = [];
+        
+        for ($i = 0; $i < $daysInPeriod; $i++) {
+            $date = $startDate->copy()->addDays($i)->format('Y-m-d');
+            $trendLabels[] = $startDate->copy()->addDays($i)->format('d M');
+            
+            $dayIn = TFinishGoodIn::whereDate('waktu_scan', $date);
+            $dayOut = TFinishGoodOut::whereDate('waktu_scan_out', $date);
+            
+            if ($partId) {
+                $dayIn->where('part_id', $partId);
+                $dayOut->where('part_id', $partId);
+            }
+            
+            $trendIn[] = $dayIn->sum('qty');
+            $trendOut[] = $dayOut->sum('qty');
+        }
+
+        $avgIn = count($trendIn) > 0 ? array_sum($trendIn) / count($trendIn) : 0;
+        $avgOut = count($trendOut) > 0 ? array_sum($trendOut) / count($trendOut) : 0;
+
         return view('finishgood.stock', [
             'parts' => $allParts,
             'selectedPartId' => $partId,
@@ -133,6 +194,13 @@ class FinishGoodStockController extends Controller
                 'total_value' => 0
             ],
             'charts' => (object)[
+                'statusCounts' => $statusCounts,
+                'statusGroups' => $statusGroups,
+                'trendLabels' => $trendLabels,
+                'trendIn' => $trendIn,
+                'trendOut' => $trendOut,
+                'avgIn' => $avgIn,
+                'avgOut' => $avgOut,
                 'posP' => [],
                 'byDept' => collect([]),
                 'deptLabels' => [],
@@ -353,9 +421,10 @@ class FinishGoodStockController extends Controller
                 $max = $stock->part->max_stock ?? 0;
                 
                 $status = 'SAFE';
-                if($qty == 0) { $status = 'KRITIS'; }
-                elseif($min > 0 && $qty < $min) { $status = 'MINIM'; }
-                elseif($max > 0 && $qty > $max) { $status = 'OVER'; }
+                $safeMinim = $min * 2;
+                if($max > 0 && $qty > $max) { $status = 'OVER'; }
+                elseif($min > 0 && $qty < $min) { $status = 'KRITIS'; }
+                elseif($min > 0 && $qty < $safeMinim) { $status = 'MINIM'; }
 
                 fputcsv($file, [
                     $stock->part->nomor_part ?? '-',

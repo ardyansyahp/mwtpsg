@@ -70,6 +70,14 @@ class IncidentController extends Controller
             // Using Send API without specific phone number allows user to pick a group/contact
             $waLink = "https://api.whatsapp.com/send?text=" . urlencode($message);
 
+            // --- AUTO NOTIFY OPS GROUP (Fonnte) ---
+            try {
+                $targetOps = env('FONNTE_GROUP_OPS', '0812xxxx');
+                // \App\Helpers\FonnteHelper::send($targetOps, $message);
+            } catch (\Exception $eWa) {
+                // Ignore
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Laporan kendala berhasil disimpan.',

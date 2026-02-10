@@ -135,5 +135,13 @@ class SMPart extends Model
     {
         return $this->hasOne(TStockFG::class, 'part_id');
     }
+
+    /**
+     * Get the latest stock opname record
+     */
+    public function latestStockOpname()
+    {
+        return $this->hasOne(\App\Models\TStockOpname::class, 'part_id')->latestOfMany();
+    }
 }
 

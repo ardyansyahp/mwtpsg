@@ -14,6 +14,8 @@ class TFinishGoodOut extends Model
     protected $fillable = [
         'finish_good_in_id',
         'lot_number',
+        'lot_produksi',
+        'manpower_id',
         'spk_id',
         'part_id',
         'waktu_scan_out',
@@ -48,5 +50,10 @@ class TFinishGoodOut extends Model
     public function part()
     {
         return $this->belongsTo(SMPart::class, 'part_id');
+    }
+
+    public function manpower()
+    {
+        return $this->belongsTo(MManpower::class, 'manpower_id');
     }
 }

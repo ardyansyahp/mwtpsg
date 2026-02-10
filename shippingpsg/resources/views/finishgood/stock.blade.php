@@ -78,6 +78,7 @@
 
 @section('content')
 <div x-data="{ 
+    viewMode: 'list',
     limitModalOpen: false, 
     limitPartId: null, 
     limitPartName: '', 
@@ -106,6 +107,15 @@
             </div>
         </div>
         
+        <div class="flex items-center bg-slate-100 p-1 rounded-lg">
+            <button @click="viewMode = 'list'" :class="viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'" class="px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5">
+                <i class="fas fa-list"></i> List
+            </button>
+            <button @click="viewMode = 'chart'" :class="viewMode === 'chart' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'" class="px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5">
+                <i class="fas fa-chart-pie"></i> Chart
+            </button>
+        </div>
+
         <form action="" method="GET" class="flex flex-wrap items-center gap-3">
             <div class="relative group">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
@@ -228,7 +238,7 @@
 
 
     {{-- Detailed Table --}}
-    <div class="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden">
+    <div x-show="viewMode === 'list'" class="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
@@ -255,10 +265,18 @@
                        // Default Safe
                        $status = 'SAFE';
                        $badgeClass = 'status-safe';
+                       $safeThreshold = $min * 2;
                        
-                       if($qty == 0) { $status = 'KRITIS'; $badgeClass = 'status-kritis'; }
-                       elseif($min > 0 && $qty < $min) { $status = 'MINIM'; $badgeClass = 'status-minim'; }
-                       elseif($max > 0 && $qty > $max) { $status = 'OVER'; $badgeClass = 'status-over'; }
+                       if($max > 0 && $qty > $max) { 
+                           $status = 'OVER'; 
+                           $badgeClass = 'status-over'; 
+                       } elseif($min > 0 && $qty < $min) { 
+                           $status = 'KRITIS'; 
+                           $badgeClass = 'status-kritis'; 
+                       } elseif($min > 0 && $qty < $safeThreshold) { 
+                           $status = 'MINIM'; 
+                           $badgeClass = 'status-minim'; 
+                       }
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors stock-row" data-status="{{ $status }}">
                         <td class="px-6 py-3">
@@ -296,7 +314,7 @@
                                             <span class="level-label text-emerald-500">Safe</span>
                                             <span class="level-val text-emerald-600">
                                                 @if($min > 0 && $max > 0)
-                                                    {{ number_format($min) }}-{{ number_format($max) }}
+                                                    {{ number_format($min * 2) }}-{{ number_format($max) }}
                                                 @else
                                                     -
                                                 @endif
@@ -336,6 +354,100 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    {{-- Chart View --}}
+    <div x-show="viewMode === 'chart'" style="display: none;" class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {{-- Status Composition (Donut) --}}
+            <div class="lg:col-span-4 glass-card p-6">
+                <h3 class="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider">Komposisi Status Stock</h3>
+                <div id="statusCompositionChart" class="w-full h-80"></div>
+                
+                <div class="mt-6 space-y-3">
+                    @foreach($charts->statusCounts as $status => $count)
+                    @php
+                        $color = $status == 'KRITIS' ? 'red' : ($status == 'MINIM' ? 'orange' : ($status == 'SAFE' ? 'emerald' : 'blue'));
+                        $percent = count($stocks) > 0 ? ($count / count($stocks)) * 100 : 0;
+                    @endphp
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] font-black text-{{ $color }}-600 uppercase">{{ $status }}</span>
+                            <span class="text-[10px] font-bold text-slate-500">{{ $count }} Items</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-{{ $color }}-500 h-full" style="width: {{ $percent }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Critical & Minim Lists --}}
+            <div class="lg:col-span-8 glass-card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Item Details by Status</h3>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {{-- Kritis List --}}
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 pb-2 border-b border-red-100">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                            <span class="text-xs font-black text-red-600 uppercase">Kritis (Stock < Min)</span>
+                        </div>
+                        <div class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                            @forelse($charts->statusGroups['KRITIS'] as $item)
+                            <div class="p-2 bg-red-50 rounded border border-red-100 flex justify-between items-center">
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-800">{{ $item['nomor_part'] }}</div>
+                                    <div class="text-[9px] text-red-600">Min: {{ $item['min'] }}</div>
+                                </div>
+                                <div class="text-right text-xs font-black text-red-700">{{ number_format($item['qty']) }}</div>
+                            </div>
+                            @empty
+                            <div class="text-[10px] text-slate-400 italic py-4 text-center">Tidak ada item kritis</div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    {{-- Minim List --}}
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 pb-2 border-b border-orange-100">
+                            <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                            <span class="text-xs font-black text-orange-600 uppercase">Minim (Near Min)</span>
+                        </div>
+                        <div class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                            @forelse($charts->statusGroups['MINIM'] as $item)
+                            <div class="p-2 bg-orange-50 rounded border border-orange-100 flex justify-between items-center">
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-800">{{ $item['nomor_part'] }}</div>
+                                    <div class="text-[9px] text-orange-600">Safe Min: {{ $item['min'] * 2 }}</div>
+                                </div>
+                                <div class="text-right text-xs font-black text-orange-700">{{ number_format($item['qty']) }}</div>
+                            </div>
+                            @empty
+                            <div class="text-[10px] text-slate-400 italic py-4 text-center">Tidak ada item minim</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Movement Trend --}}
+        <div class="glass-card p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fas fa-chart-line text-indigo-500"></i> Stock Activity Trend (IN vs OUT)
+                </h3>
+                <div class="flex gap-4 text-[10px] font-bold">
+                    <span class="text-emerald-600 uppercase">Avg In: {{ number_format($charts->avgIn, 1) }}</span>
+                    <span class="text-orange-600 uppercase">Avg Out: {{ number_format($charts->avgOut, 1) }}</span>
+                </div>
+            </div>
+            <div id="stockActivityChart" class="w-full h-80"></div>
         </div>
     </div>
 
@@ -402,32 +514,129 @@
 }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const options = {
+        series: [{{ $charts->statusCounts['KRITIS'] }}, {{ $charts->statusCounts['MINIM'] }}, {{ $charts->statusCounts['SAFE'] }}, {{ $charts->statusCounts['OVER'] }}],
+        chart: {
+            height: 350,
+            type: 'donut',
+        },
+        labels: ['KRITIS', 'MINIM', 'SAFE', 'OVER'],
+        colors: ['#ef4444', '#f97316', '#10b981', '#3b82f6'],
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '70%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            label: 'TOTAL ITEMS',
+                            formatter: function (w) {
+                                return w.globals.seriesTotals.reduce((a, b) => a + b, 0)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        legend: {
+            position: 'bottom'
+        }
+    };
+
+    const chart = new ApexCharts(document.querySelector("#statusCompositionChart"), options);
+    chart.render();
+
+    // --- ApexChart: Stock Activity Trend (IN vs OUT) ---
+    const trendOptions = {
+        series: [
+            {
+                name: 'Total IN',
+                data: @json($charts->trendIn)
+            },
+            {
+                name: 'Total OUT',
+                data: @json($charts->trendOut)
+            }
+        ],
+        chart: {
+            height: 350,
+            type: 'line',
+            zoom: { enabled: false }
+        },
+        colors: ['#10b981', '#f59e0b'],
+        dataLabels: { enabled: false },
+        stroke: {
+            width: [3, 3],
+            curve: 'smooth',
+            dashArray: [0, 0]
+        },
+        legend: { position: 'top' },
+        xaxis: {
+            categories: @json($charts->trendLabels),
+            labels: { style: { fontSize: '10px' } }
+        },
+        yaxis: {
+            labels: { style: { fontSize: '10px' } }
+        },
+        annotations: {
+            yaxis: [
+                {
+                    y: {{ $charts->avgIn }},
+                    borderColor: '#10b981',
+                    label: {
+                        borderColor: '#10b981',
+                        style: { color: '#fff', background: '#10b981', fontSize: '10px' },
+                        text: 'AVG IN',
+                    },
+                    borderDashArray: 3,
+                },
+                {
+                    y: {{ $charts->avgOut }},
+                    borderColor: '#f59e0b',
+                    label: {
+                        borderColor: '#f59e0b',
+                        style: { color: '#fff', background: '#f59e0b', fontSize: '10px' },
+                        text: 'AVG OUT',
+                    },
+                    borderDashArray: 3,
+                }
+            ]
+        },
+        tooltip: {
+            x: { format: 'dd MMM' },
+        }
+    };
+
+    const trendChart = new ApexCharts(document.querySelector("#stockActivityChart"), trendOptions);
+    trendChart.render();
+});
+
 function filterByStatus(status) {
+    // Force view mode to list if someone clicks filter tabs
+    // Note: Since x-data is on parent, we might need a better way to trigger it if we want it seamless
+    // But for now, let's just make sure the rows filter correctly.
+    
     // Remove active class from all filters
     document.querySelectorAll('.status-filter').forEach(btn => {
         btn.classList.remove('active-filter');
     });
     
     // Add active class to clicked filter
-    event.target.closest('.status-filter').classList.add('active-filter');
+    const target = event.target.closest('.status-filter');
+    if(target) target.classList.add('active-filter');
     
     // Get all stock rows
     const rows = document.querySelectorAll('.stock-row');
     
     if (status === 'ALL') {
-        // Show all rows
-        rows.forEach(row => {
-            row.style.display = '';
-        });
+        rows.forEach(row => row.style.display = '');
     } else {
-        // Filter by status
         rows.forEach(row => {
-            if (row.dataset.status === status) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            row.style.display = (row.dataset.status === status) ? '' : 'none';
         });
     }
 }

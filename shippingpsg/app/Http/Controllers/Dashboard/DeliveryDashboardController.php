@@ -75,7 +75,8 @@ class DeliveryDashboardController extends Controller
 
         // Metric 2: Total Delivery Plan
         $planQuery = TSpkDetail::whereHas('spk', function($q) use ($startDate, $endDate, $filterCustomer) {
-            $q->whereBetween('tanggal', [$startDate, $endDate]);
+            $q->whereBetween('tanggal', [$startDate, $endDate])
+              ->whereNull('parent_spk_id');
             if ($filterCustomer) $q->where('customer_id', $filterCustomer);
         });
 
@@ -121,6 +122,7 @@ class DeliveryDashboardController extends Controller
         
         $dailyPlans = TSpkDetail::join('t_spk', 't_spk_detail.spk_id', '=', 't_spk.id')
             ->whereBetween('t_spk.tanggal', [$startDate, $endDate])
+            ->whereNull('t_spk.parent_spk_id')
             ->when($filterCustomer, function($q) use ($filterCustomer) {
                 $q->where('t_spk.customer_id', $filterCustomer);
             })
@@ -187,6 +189,7 @@ class DeliveryDashboardController extends Controller
         // Group by Part to show stats
         $partPerformance = TSpkDetail::join('t_spk', 't_spk_detail.spk_id', '=', 't_spk.id')
             ->whereBetween('t_spk.tanggal', [$startDate, $endDate])
+            ->whereNull('t_spk.parent_spk_id')
             ->join('sm_part', 't_spk_detail.part_id', '=', 'sm_part.id')
             ->when($filterCustomer, function($q) use ($filterCustomer) {
                 $q->where('t_spk.customer_id', $filterCustomer);
@@ -244,6 +247,19 @@ class DeliveryDashboardController extends Controller
             ];
         }
 
+        // --- Calculate Delivery Status Summary (for Chart) ---
+        $deliveryStatusSummary = [
+            'EXCELLENT' => 0,
+            'GOOD' => 0,
+            'POOR' => 0
+        ];
+
+        foreach($performanceData as $item) {
+            if($item['rate'] >= 100) $deliveryStatusSummary['EXCELLENT']++;
+            elseif($item['rate'] >= 90) $deliveryStatusSummary['GOOD']++;
+            else $deliveryStatusSummary['POOR']++;
+        }
+
         // --- Chart: Monthly Trend (Last 12 Months) ---
         $monthlyLabels = [];
         $monthlyRate = [];
@@ -289,7 +305,7 @@ class DeliveryDashboardController extends Controller
             'serviceRatePlan', 'serviceRatePO', 
             'chartPlan', 'chartActual', 'chartRate', 'daysLabel',
             'monthlyLabels', 'monthlyRate',
-            'performanceData', 'customers'
+            'performanceData', 'customers', 'deliveryStatusSummary'
         ));
     }
 
@@ -303,6 +319,7 @@ class DeliveryDashboardController extends Controller
 
         $partPerformance = TSpkDetail::join('t_spk', 't_spk_detail.spk_id', '=', 't_spk.id')
             ->whereBetween('t_spk.tanggal', [$startDate, $endDate])
+            ->whereNull('t_spk.parent_spk_id')
             ->join('sm_part', 't_spk_detail.part_id', '=', 'sm_part.id')
             ->when($filterCustomer, function($q) use ($filterCustomer) {
                 $q->where('t_spk.customer_id', $filterCustomer);

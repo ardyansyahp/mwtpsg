@@ -49,7 +49,7 @@
     @endif
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <form action="{{ route('stock.po.update', $purchaseOrder->id) }}" method="POST" class="space-y-6">
+        <form action="{{ route('stock.po.update', $po->id) }}" method="POST" class="space-y-6">
             @csrf
             @method('PUT')
             
@@ -62,7 +62,7 @@
                     <select name="part_id" class="w-full select2-part" required>
                         <option value="">Pilih Part</option>
                         @foreach($parts as $part)
-                            <option value="{{ $part->id }}" {{ old('part_id', $purchaseOrder->part_id) == $part->id ? 'selected' : '' }}>
+                            <option value="{{ $part->id }}" {{ old('part_id', $po->part_id) == $part->id ? 'selected' : '' }}>
                                 {{ $part->nomor_part }} - {{ $part->nama_part }}
                             </option>
                         @endforeach
@@ -77,7 +77,7 @@
                     <input 
                         type="text" 
                         name="po_number" 
-                        value="{{ old('po_number', $purchaseOrder->po_number) }}" 
+                        value="{{ old('po_number', $po->po_number) }}" 
                         required 
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Contoh: PO-2026-001"
@@ -92,7 +92,7 @@
                     <input 
                         type="number" 
                         name="qty" 
-                        value="{{ old('qty', $purchaseOrder->qty) }}" 
+                        value="{{ old('qty', $po->qty) }}" 
                         min="1" 
                         required 
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -107,7 +107,7 @@
                     </label>
                     <select name="month" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                         @for($m=1; $m<=12; $m++)
-                            <option value="{{ $m }}" {{ old('month', $purchaseOrder->month) == $m ? 'selected' : '' }}>
+                            <option value="{{ $m }}" {{ old('month', $po->month) == $m ? 'selected' : '' }}>
                                 {{ DateTime::createFromFormat('!m', $m)->format('F') }}
                             </option>
                         @endfor
@@ -122,7 +122,7 @@
                     <input 
                         type="number" 
                         name="year" 
-                        value="{{ old('year', $purchaseOrder->year) }}" 
+                        value="{{ old('year', $po->year) }}" 
                         required 
                         min="2020" 
                         max="2099"
@@ -138,7 +138,7 @@
                     <input 
                         type="text" 
                         name="delivery_frequency" 
-                        value="{{ old('delivery_frequency', $purchaseOrder->delivery_frequency) }}" 
+                        value="{{ old('delivery_frequency', $po->delivery_frequency) }}" 
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Contoh: 4x/Month"
                     >

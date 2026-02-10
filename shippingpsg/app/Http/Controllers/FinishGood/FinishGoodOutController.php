@@ -27,7 +27,7 @@ class FinishGoodOutController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $query = TSpk::with(['customer', 'plantgate', 'details.part', 'finishGoodOuts', 'childSpk'])
+        $query = TSpk::with(['customer', 'plantgate', 'details.part', 'finishGoodOuts', 'childSpk', 'parentSpk.parentSpk.parentSpk'])
             ->withCount(['details', 'finishGoodOuts'])
             ->withSum('details as total_target', 'jadwal_delivery_pcs')
             ->withSum('details as total_original_target', 'original_jadwal_delivery_pcs') // Untuk handle tampilan split
@@ -61,6 +61,26 @@ class FinishGoodOutController extends Controller
         }
             
         $spks = $query->paginate($request->per_page ?? 15);
+
+        // Calculate Global Progress for Split SPKs (Accumulate Ancestors)
+        foreach ($spks as $spk) {
+            if ($spk->parent_spk_id) {
+                $ancestors = [];
+                $curr = $spk->parentSpk; // Eager loaded 1st level
+                
+                while ($curr) {
+                    $ancestors[] = $curr->id;
+                    $curr = $curr->parentSpk; // Eager loaded next level? (Only if nested included)
+                    // If deep nesting isn't fully loaded, this might become null or trigger lazy load.
+                    // Given 'parentSpk.parentSpk.parentSpk', we cover 4 cycles (Self + 3 Parents).
+                }
+
+                if (!empty($ancestors)) {
+                    $ancestorScanned = TFinishGoodOut::whereIn('spk_id', $ancestors)->sum('qty');
+                    $spk->total_scanned += $ancestorScanned;
+                }
+            }
+        }
 
         return view('finishgood.out.out', compact('spks'));
     }
@@ -190,6 +210,20 @@ class FinishGoodOutController extends Controller
                 $lotNumber = $lotNumberInput;
                 $barcodePartNomor = null;
                 
+                // SPECIAL CASE: Inoac - Scan Part Number Only (No pipe separator)
+                // Format: REI-04-002 (tanpa |)
+                if (!str_contains($lotNumberInput, '|')) {
+                    // Kemungkinan ini adalah Part Number Inoac
+                    // Cari part untuk validasi customer
+                    $part = SMPart::with('customer')->where('nomor_part', $lotNumberInput)->first();
+                    
+                    if ($part && $part->customer && stripos($part->customer->nama_perusahaan, 'INOAC') !== false) {
+                        // Ini adalah Inoac part - gunakan Part Number sebagai pencarian
+                        $barcodePartNomor = $lotNumberInput;
+                        $lotNumber = ''; // Kosongkan lot number karena akan dicari via Part Number
+                    }
+                }
+                
                 // Parsing jika format Barcode: Part|Customer|Qty|Lot
                 if (str_contains($lotNumberInput, '|')) {
                    $parts = explode('|', $lotNumberInput);
@@ -275,16 +309,45 @@ class FinishGoodOutController extends Controller
                 // Gunakan Part ID dari SPK Detail agar hitungan progress sinkron
                 $partId = $partDetail->part_id;
 
-                // 3. Validasi Quantity & Balance
-                // Balance Saat ini = Target SPK - Total Scanned (All Cycles)
-                $currentTotalScanned = $spk->finishGoodOuts->where('part_id', $partId)->sum('qty');
+                // 3. Validasi Quantity & Balance (Global Logic)
+                // Balance Saat ini = Target SPK - Total Scanned (Ancestors + Local)
+                
                 $targetQty = $partDetail->jadwal_delivery_pcs;
                 $scanQty = $finishGoodIn->qty; // Qty dari Label
 
+                // Sum Local Scans
+                $currentLocalScanned = $spk->finishGoodOuts->where('part_id', $partId)->sum('qty');
+                
+                // Sum Ancestor Scans to validate GLOBAL overflow
+                $rootSpk = $spk;
+                $ancestorIds = [];
+                while ($rootSpk->parent_spk_id) {
+                    $parent = TSpk::find($rootSpk->parent_spk_id);
+                    if (!$parent) break;
+                    $ancestorIds[] = $parent->id;
+                    $rootSpk = $parent;
+                }
+                
+                $ancestorScanned = 0;
+                if (!empty($ancestorIds)) {
+                     // Note: We sum purely by part_id because allocation assumes FIFO across split SPKs for same part
+                     $ancestorScanned = TFinishGoodOut::whereIn('spk_id', $ancestorIds)
+                        ->where('part_id', $partId)
+                        ->sum('qty');
+                }
+                
+                $currentTotalScanned = $currentLocalScanned + $ancestorScanned;
+
+                // Validate Stock Availability
+                $this->validateStock($partId, $scanQty);
+
                 // Cek Overflow
                 if (($currentTotalScanned + $scanQty) > $targetQty) {
-                    $remaining = $targetQty - $currentTotalScanned;
-                    throw new \Exception("Over Quantity! Sisa balance: {$remaining} PCS. Scan ini: {$scanQty} PCS.");
+                    if (empty($validated['catatan'])) {
+                        $remaining = max(0, $targetQty - $currentTotalScanned);
+                        $note = $partDetail->catatan ? " (Catatan SPK: {$partDetail->catatan})" : "";
+                        throw new \Exception("OVER_QTY_NEEDS_REASON|Sisa balance: {$remaining} PCS. Scan ini: {$scanQty} PCS.{$note}");
+                    }
                 }
 
                 // 4. Save
@@ -292,7 +355,7 @@ class FinishGoodOutController extends Controller
 
                 $finishGoodOut = TFinishGoodOut::create([
                     'finish_good_in_id' => $finishGoodIn->id,
-                    'lot_number' => $finishGoodIn->lot_number,
+                    'lot_number' => $finishGoodIn->lot_number ?? ($finishGoodIn->part->nomor_part ?? '-'),
                     'spk_id' => $validated['spk_id'],
                     'part_id' => $partId,
                     'cycle' => $validated['cycle'],
@@ -301,6 +364,11 @@ class FinishGoodOutController extends Controller
                     'catatan' => $validated['catatan'] ?? null,
                 ]);
             });
+
+            // Stock Alert Check
+            if ($finishGoodOut) {
+                $this->checkStockAlert($finishGoodOut->part_id, $finishGoodOut->qty);
+            }
 
             return response()->json([
                 'success' => true,
@@ -319,6 +387,106 @@ class FinishGoodOutController extends Controller
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 400);
+        }
+    }
+
+    /**
+     * Store Manual Input for SPK Remainder / Adjustment
+     */
+    public function storeManual(Request $request): JsonResponse
+    {
+        if (!userCan('finishgood.out.create')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'spk_id' => 'required|exists:T_SPK,id',
+            'part_id' => 'required|exists:SM_Part,id',
+            'cycle' => 'required|integer|min:1',
+            'qty' => 'required|integer|min:1',
+            'catatan' => 'required|string|min:3', // Reason is mandatory
+        ]);
+
+        try {
+            // Validate Stock Availability
+            $this->validateStock($validated['part_id'], $validated['qty']);
+            $finishGoodOut = null;
+            DB::transaction(function () use ($validated, &$finishGoodOut) {
+                // 1. Validasi SPK
+                $spk = TSpk::with(['details.part', 'finishGoodOuts'])->find($validated['spk_id']);
+                if ($spk->no_surat_jalan) {
+                    throw new \Exception("SPK ini sudah dikirim (No. SJ: {$spk->no_surat_jalan}).");
+                }
+
+                // 2. Load Detail & Validasi Strict Rule
+                $partDetail = $spk->details->where('part_id', $validated['part_id'])->first();
+                if (!$partDetail) throw new \Exception("Part tidak ada di SPK ini.");
+
+                $currentTotalScanned = $spk->finishGoodOuts->where('part_id', $validated['part_id'])->sum('qty');
+                $targetQty = $partDetail->jadwal_delivery_pcs;
+                $currentBalance = max(0, $targetQty - $currentTotalScanned);
+
+                // Rule: Tidak boleh input manual jika Balance >= Std Packing 
+                // Kecuali, jika user input OVER (qty > balance), itu berarti dia sedang handle kelebihan.
+                // Tapi jika dia input <= Balance, dan Balance itu besar (bisa scan box), maka tolak.
+                $stdPacking = $partDetail->qty_packing_box ?? 0;
+                
+                // Allow Override IF input qty EXCEEDS balance (Handling Over Qty case)
+                $isOverQty = $validated['qty'] > $currentBalance;
+
+                if (!$isOverQty && $stdPacking > 0 && $currentBalance >= $stdPacking) {
+                     throw new \Exception("Manual Input DITOLAK.\nSisa balance ({$currentBalance}) masih mencukupi untuk Scan Box Standar ({$stdPacking}).\nHarap lakukan Scan Barcode!");
+                }
+                
+                // 3. Find FIFO Stock (Oldest Unscanned)
+                $finishGoodIn = TFinishGoodIn::with('part')
+                    ->where('part_id', $validated['part_id'])
+                    ->where('qty', '>', 0)
+                    ->whereDoesntHave('finishGoodOuts')
+                    ->orderBy('waktu_scan', 'asc')
+                    ->first();
+                
+                if (!$finishGoodIn) {
+                    // Coba cari yang sudah pernah discan tapi mungkin partial? (Kompleks, skip dulu)
+                    // Atau cari ANY FIFO record meski sudah out (Link double)?
+                    // User requirement: "Handling input manual".
+                    // Jika stok sistem habis, kita block atau allow null?
+                    // Safe behavior: Block. Data integrity.
+                     throw new \Exception("Stok Finish Good IN kosong untuk part ini (FIFO). Tidak bisa input manual.");
+                }
+
+                $finishGoodOut = TFinishGoodOut::create([
+                    'finish_good_in_id' => $finishGoodIn->id,
+                    'lot_number' => $finishGoodIn->lot_number ?? 'MANUAL',
+                    'spk_id' => $validated['spk_id'],
+                    'part_id' => $validated['part_id'],
+                    'cycle' => $validated['cycle'],
+                    'qty' => $validated['qty'],
+                    'waktu_scan_out' => now(),
+                    'catatan' => $validated['catatan'] . " [MANUAL]",
+                ]);
+            });
+
+            // Stock Alert Check
+            if ($finishGoodOut) {
+                $this->checkStockAlert($finishGoodOut->part_id, $finishGoodOut->qty);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Input Manual Berhasil',
+                'data' => [
+                    'id' => $finishGoodOut->id,
+                    'qty' => $finishGoodOut->qty,
+                    'part_id' => $finishGoodOut->part_id,
+                    'cycle' => $finishGoodOut->cycle,
+                     // Add minimal part info if needed by frontend
+                    'part_number' => $finishGoodOut->part->nomor_part ?? '-',
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
 
@@ -499,7 +667,7 @@ class FinishGoodOutController extends Controller
     public function getPartsBySpk(int $spkId): JsonResponse
     {
         try {
-            $spk = TSpk::with(['details.part', 'finishGoodOuts'])->find($spkId);
+            $spk = TSpk::with(['details.part', 'finishGoodOuts', 'details.poCustomer'])->find($spkId);
             
             if (!$spk) {
                 return response()->json([
@@ -508,19 +676,81 @@ class FinishGoodOutController extends Controller
                 ], 404);
             }
 
-            $parts = $spk->details->map(function($detail) use ($spk) {
-                $scannedQty = $spk->finishGoodOuts
-                    ->where('part_id', $detail->part_id)
-                    ->sum('qty');
-                    
+            // 1. Identify Root SPK to get Global Targets
+            $rootSpk = $spk;
+            $ancestorIds = [];
+            while ($rootSpk->parent_spk_id) {
+                $parent = TSpk::find($rootSpk->parent_spk_id);
+                if (!$parent) break;
+                $ancestorIds[] = $parent->id;
+                $rootSpk = $parent;
+            }
+            // Load Root Details for Target mapping
+            $rootSpk->load('details');
+
+            // 2. Calculate Total Global Scans (Ancestors + Current)
+            $ancestorScans = [];
+            if (!empty($ancestorIds)) {
+                $ancestorScans = TFinishGoodOut::whereIn('spk_id', $ancestorIds)
+                    ->get() 
+                    ->groupBy('part_id')
+                    ->map(fn($rows) => $rows->sum('qty'))
+                    ->toArray();
+            }
+
+            $currentScans = $spk->finishGoodOuts->groupBy('part_id')->map(fn($row) => $row->sum('qty'));
+
+            // 3. Prepare Mapping for Root Targets
+            $rootTargets = [];
+            foreach ($rootSpk->details as $rd) {
+                $key = $rd->part_id . '_' . ($rd->po_customer_id ?? 'null');
+                if (!isset($rootTargets[$key])) $rootTargets[$key] = 0;
+                $rootTargets[$key] += ($rd->original_jadwal_delivery_pcs > 0 ? $rd->original_jadwal_delivery_pcs : $rd->jadwal_delivery_pcs);
+            }
+
+            $globalPartUsage = [];
+            $partHasActiveRow = [];
+
+            $parts = $spk->details->map(function($detail) use ($spk, $ancestorScans, $currentScans, $rootTargets, &$globalPartUsage, &$partHasActiveRow) {
+                $partId = $detail->part_id;
+                $poId = $detail->po_customer_id ?? 'null';
+                $key = $partId . '_' . $poId; // Match with Root
+
+                // Determine Global Target for this Row
+                $globalRowTarget = $rootTargets[$key] ?? $detail->jadwal_delivery_pcs;
+                
+                // Total Available Global Scans for this Part
+                $totalGlobalAvailable = ($ancestorScans[$partId] ?? 0) + ($currentScans[$partId] ?? 0);
+                
+                // FIFO Allocation Validation
+                $usedGlobal = $globalPartUsage[$partId] ?? 0;
+                $remainingGlobalToAllocate = max(0, $totalGlobalAvailable - $usedGlobal);
+                
+                // Allocate to this row
+                $allocatedGlobal = min($globalRowTarget, $remainingGlobalToAllocate);
+                
+                // Update usage
+                $globalPartUsage[$partId] = $usedGlobal + $allocatedGlobal;
+                
+                $balance = $globalRowTarget - $allocatedGlobal;
+
+                // Determine if Active
+                $isActive = false;
+                if ($balance > 0 && !isset($partHasActiveRow[$partId])) {
+                    $isActive = true;
+                    $partHasActiveRow[$partId] = true;
+                }
+               
                 return [
+                    'detail_id' => $detail->id, 
                     'part_id' => $detail->part_id,
                     'nomor_part' => $detail->part ? $detail->part->nomor_part : '-',
                     'nama_part' => $detail->part ? $detail->part->nama_part : '-',
-                    'qty_plan' => $detail->jadwal_delivery_pcs,
-                    'qty_scanned' => $scannedQty,
-                    'qty_balance' => $detail->jadwal_delivery_pcs - $scannedQty,
-                    'qty_packing' => $detail->qty_packing ?? 1 // Asumsi 1 jika null
+                    'qty_plan' => $globalRowTarget, 
+                    'qty_scanned' => $allocatedGlobal, 
+                    'qty_balance' => $balance, 
+                    'qty_packing' => $detail->qty_packing ?? 1,
+                    'is_active' => $isActive
                 ];
             });
 
@@ -547,56 +777,100 @@ class FinishGoodOutController extends Controller
         }
 
         // Load relationships
-        $spk->load(['customer', 'plantgate', 'details.part', 'finishGoodOuts.part']);
+        $spk->load(['customer', 'plantgate', 'details.part', 'finishGoodOuts.part', 'details.poCustomer']);
 
-        // Calculate progress per part
+        // 1. Identify Root SPK to get Global Targets
+        $rootSpk = $spk;
+        $ancestorIds = [];
+        while ($rootSpk->parent_spk_id) {
+            $parent = TSpk::find($rootSpk->parent_spk_id);
+            if (!$parent) break;
+            $ancestorIds[] = $parent->id;
+            $rootSpk = $parent;
+        }
+        // Load Root Details for Target mapping
+        $rootSpk->load('details');
+
+        // 2. Calculate Total Global Scans (Ancestors + Current)
+        $ancestorScans = [];
+        if (!empty($ancestorIds)) {
+            $ancestorScans = TFinishGoodOut::whereIn('spk_id', $ancestorIds)
+                ->get() // Need to group by part
+                ->groupBy('part_id')
+                ->map(fn($rows) => $rows->sum('qty'))
+                ->toArray();
+        }
+
+        $currentScans = $spk->finishGoodOuts->groupBy('part_id')->map(fn($row) => $row->sum('qty'));
+
+        // 3. Prepare Mapping for Root Targets [part_id][po_id] => target
+        $rootTargets = [];
+        foreach ($rootSpk->details as $rd) {
+            $key = $rd->part_id . '_' . ($rd->po_customer_id ?? 'null');
+            // Handle duplicate rows for same part+PO in root? Sum them.
+            if (!isset($rootTargets[$key])) $rootTargets[$key] = 0;
+            $rootTargets[$key] += ($rd->original_jadwal_delivery_pcs > 0 ? $rd->original_jadwal_delivery_pcs : $rd->jadwal_delivery_pcs);
+        }
+
+        // 4. Calculate Progress per Detail (Global FIFO)
         $progress = [];
         $totalScanned = 0;
         $totalTarget = 0;
-        
-        // Tentukan Cycle saat ini (Use SPK's cycle number)
         $currentCycle = $spk->cycle_number ?? 1;
 
-        // Get Accumulated Scanned from Ancestor SPKs to Calculate Global Balance
-        $ancestorSpkIds = [];
-        $currentParent = $spk->parentSpk; 
-        while ($currentParent) {
-            $ancestorSpkIds[] = $currentParent->id;
-            $currentParent = TSpk::find($currentParent->parent_spk_id);
-        }
+        $globalPartUsage = []; // Track allocation of Global Scans across rows
+        $partHasActiveRow = []; // Track active row per part (first with balance)
 
         foreach ($spk->details as $detail) {
-             // Validasi $detail->part null check
             if (!$detail->part) continue;
 
             $partId = $detail->part_id;
-            $currentScanned = $spk->finishGoodOuts->where('part_id', $partId)->sum('qty');
-            $target = $detail->jadwal_delivery_pcs;
+            $poId = $detail->po_customer_id ?? 'null';
+            $key = $partId . '_' . $poId; // Match with Root
+
+            // Determine Global Target for this Row
+            // Fallback: Use current target if not found in root (shouldn't happen for valid splits)
+            $globalRowTarget = $rootTargets[$key] ?? $detail->jadwal_delivery_pcs;
             
-            // Calculate Previous Scanned
-            $previousScanned = 0;
-            if (!empty($ancestorSpkIds)) {
-                $previousScanned = TFinishGoodOut::whereIn('spk_id', $ancestorSpkIds)
-                    ->where('part_id', $partId)
-                    ->sum('qty');
+            // Total Available Global Scans for this Part
+            $totalGlobalAvailable = ($ancestorScans[$partId] ?? 0) + ($currentScans[$partId] ?? 0);
+            
+            // FIFO Allocation Validation
+            $usedGlobal = $globalPartUsage[$partId] ?? 0;
+            $remainingGlobalToAllocate = max(0, $totalGlobalAvailable - $usedGlobal);
+            
+            // Allocate to this row
+            $allocatedGlobal = min($globalRowTarget, $remainingGlobalToAllocate);
+            
+            // Update usage
+            $globalPartUsage[$partId] = $usedGlobal + $allocatedGlobal;
+            
+            $balance = $globalRowTarget - $allocatedGlobal;
+
+            // Determine if this is the "Active" row for this part (First one with balance)
+            $isActive = false;
+            if ($balance > 0 && !isset($partHasActiveRow[$partId])) {
+                $isActive = true;
+                $partHasActiveRow[$partId] = true;
             }
 
-            $totalScannedGlobal = $previousScanned + $currentScanned;
-            // Global Balance = Original Target - (Previous + Current)
-            $globalBalance = max(0, $target - $totalScannedGlobal);
-
-            $progress[$partId] = [
+            // Use Detail ID as key
+            $progress[$detail->id] = [
+                'part_id' => $partId, 
                 'part_nomor' => $detail->part->nomor_part,
                 'part_nama' => $detail->part->nama_part,
-                'target' => $target,
-                'scanned' => $currentScanned,
-                'previous_scanned' => $previousScanned,
-                'balance' => $globalBalance, // Use Global Balance
-                'qty_packing' => $detail->qty_packing ?? 1,
+                'po_number' => $detail->poCustomer->po_number ?? '-',
+                'target' => $globalRowTarget, 
+                'scanned' => $allocatedGlobal, 
+                'previous_scanned' => ($ancestorScans[$partId] ?? 0), 
+                'balance' => $balance,
+                'qty_packing' => $detail->qty_packing_box ?? 0,
+                'is_active' => $isActive,
             ];
             
-            $totalScanned += $currentScanned;
-            $totalTarget += $target;
+            // Header Stats should reflect Global sums
+            $totalScanned += $allocatedGlobal;
+            $totalTarget += $globalRowTarget;
         }
 
         // Calculate Header Total Balance Global
@@ -662,21 +936,19 @@ class FinishGoodOutController extends Controller
 
                     if ($totalScannedGlobal < $originalTarget) {
                         $hasBalance = true;
-                        
-                        // Prepare data for NEW SPK
+                    }
+
+                    // Always include the part in the new SPK (Child) so it mirrors the Parent structure
+                    // The scan logic (`scan` method) handles Global Balance calculation correctly using Ancestors
                     $splitDetails[] = [
                         'part_id' => $detail->part_id,
+                        'po_customer_id' => $detail->po_customer_id, // Ensure PO is carried over
                         'qty_packing_box' => $detail->qty_packing_box,
-                        'jadwal_delivery_pcs' => $originalTarget, // Use Full Target
+                        'jadwal_delivery_pcs' => $originalTarget, 
                         'jumlah_pulling_box' => round($originalTarget / ($detail->qty_packing_box ?: 1)),
                         'catatan' => $detail->catatan
                     ];
-
-                    // REMOVED: Logic to update original SPK target. 
-                    // User wants existing SPK to keep original target (e.g. 90) even if only 30 shipped.
-                    // The "Shortage" is handled by creating a new SPK, but the old SPK keeps record of full PO target.
-                } // End if
-            } // End foreach
+                } // End foreach
 
                 // 3. Create New SPK logic
                 $currentCycle = $spk->cycle_number ?? 1;
@@ -692,7 +964,8 @@ class FinishGoodOutController extends Controller
                 $month = date('m');
                 $prefix = "SPK/{$year}/{$month}/";
                 
-                $lastSpk = TSpk::where('nomor_spk', 'like', "{$prefix}%")
+                $lastSpk = TSpk::withTrashed()
+                    ->where('nomor_spk', 'like', "{$prefix}%")
                     ->orderBy('nomor_spk', 'desc')
                     ->lockForUpdate() // Avoid collisions
                     ->first();
@@ -756,6 +1029,60 @@ class FinishGoodOutController extends Controller
                 $spk->update([
                     'no_surat_jalan' => $request->no_surat_jalan
                 ]);
+
+                // --- NOTIFIKASI WHATSAPP (SPLIT SPK) ---
+                if (isset($newSpk)) {
+                    try {
+                        $target = env('FONNTE_ADMIN_FG', '0812xxxx'); // Set nominal default or use .env
+                        // Pesan
+                        $pesan = "*⚠️ NOTIFIKASI SPLIT SPK (SHIPPING)*\n\n";
+                        $pesan .= "Telah terjadi Split SPK secara otomatis.\n";
+                        $pesan .= "Surat Jalan: {$request->no_surat_jalan}\n\n";
+                        
+                        $pesan .= "📌 *SPK LAMA (Closed):*\n";
+                        $pesan .= "No: {$spk->nomor_spk}\n\n";
+                        
+                        $pesan .= "🆕 *SPK BARU (Split):*\n";
+                        $pesan .= "No: {$newSpk->nomor_spk}\n";
+                        $pesan .= "Plan Jam: " . ($newSpk->jam_berangkat_plan ?? '-') . "\n";
+                        $pesan .= "Cycle: {$newSpk->cycle_number}\n\n";
+                        
+                        if ($request->filled('split_reason')) {
+                            $pesan .= "📝 Alasan: {$request->split_reason}\n\n";
+                        }
+                        
+                        $pesan .= "👉 *MOHON SEGERA ADJUST JAM*\n";
+                        $pesan .= "Silakan login ke sistem dan update jam keberangkatan/kedatangan untuk SPK Baru tersebut sesuai kondisi aktual.\n\n";
+                        $pesan .= "_Sistem Otomatis Shipping PSG_";
+                        
+                        \App\Helpers\FonnteHelper::send($target, $pesan);
+                        
+                    } catch (\Exception $waError) {
+                        Log::error('Gagal kirim WA Split SPK: ' . $waError->getMessage());
+                    }
+                }
+
+                /*
+                // --- NOTIFIKASI KEBERANGKATAN (DEPARTURE ALERT) ---
+                // Kirim setiap kali Close Cycle (SJ Terbit)
+                try {
+                    $targetGeneral = env('FONNTE_GROUP_OPS', '0812xxxx'); // Group Ops/Shipping
+                    
+                    $pesanDept = "🚛 *INFO PENGIRIMAN (DEPARTURE)*\n\n";
+                    $pesanDept .= "Surat Jalan: *{$request->no_surat_jalan}*\n";
+                    $pesanDept .= "Tgl Berangkat: " . ($spk->tanggal ? date('d-m-Y', strtotime($spk->tanggal)) : '-') . "\n";
+                    $pesanDept .= "Customer: *{$spk->customer->nama_perusahaan}*\n";
+                    $pesanDept .= "Plan Jam: {$spk->jam_berangkat_plan}\n";
+                    $pesanDept .= "Truck: " . ($spk->nomor_plat ?? '-') . "\n\n";
+                    $pesanDept .= "_Status: OTW / DISPATCHED_ 🏁";
+
+                    \App\Helpers\FonnteHelper::send($targetGeneral, $pesanDept);
+                    
+                } catch (\Exception $eDep) {
+                    Log::error('Gagal kirim WA Departure Alert: ' . $eDep->getMessage());
+                }
+                */
+
             });
 
             if ($hasBalance && isset($newSpk)) {
@@ -874,61 +1201,65 @@ class FinishGoodOutController extends Controller
         // Prepare data for each part in SPK
         // Load root SPK (first in lineage) to get original jadwal values
         $rootSpkId = $spkLineage[0]; // First SPK in lineage
-        $rootSpk = TSpk::with('details')->find($rootSpkId);
+        $rootSpk = TSpk::with(['details.part', 'details.poCustomer'])->find($rootSpkId);
         
-        $details = [];
-        foreach ($spk->details as $detail) {
+        $groupedParts = [];
+        
+        // 1. Group Details by Part ID (Merge POs)
+        foreach ($rootSpk->details as $detail) {
             $partId = $detail->part_id;
             $qtyPerBox = $detail->part->QTY_Packing_Box ?? 1;
             
-            // Calculate total scanned across all available cycles
+            // Determine Target
+            $target = $detail->original_jadwal_delivery_pcs > 0 
+                ? $detail->original_jadwal_delivery_pcs 
+                : $detail->jadwal_delivery_pcs;
+            
+            if (!isset($groupedParts[$partId])) {
+                $groupedParts[$partId] = [
+                    'part' => $detail->part,
+                    'qty_packing_box' => $qtyPerBox,
+                    'jadwal_delivery_pcs' => 0,
+                ];
+            }
+            $groupedParts[$partId]['jadwal_delivery_pcs'] += $target;
+        }
+
+        $details = [];
+        // 2. Process Grouped Parts
+        foreach ($groupedParts as $partId => $data) {
+            $targetTotal = $data['jadwal_delivery_pcs'];
+            $qtyPerBox = $data['qty_packing_box'];
+            
             $totalScanned = 0;
             $actualCycles = [];
             
             foreach ($availableCycles as $cyc) {
-                $qty = $cycleData[$partId][$cyc] ?? 0;
+                // Get Total Scans for this Part in this Cycle (Across all POs)
+                $scannedInCycle = $cycleData[$partId][$cyc] ?? 0;
+                $totalScanned += $scannedInCycle;
+                
                 $actualCycles[$cyc] = [
-                    'qty_pcs' => $qty,
-                    'qty_box' => $qtyPerBox > 0 ? round($qty / $qtyPerBox) : 0
+                    'qty_pcs' => $scannedInCycle,
+                    'qty_box' => $qtyPerBox > 0 ? ceil($scannedInCycle / $qtyPerBox) : 0
                 ];
-                $totalScanned += $qty;
             }
             
-            // Get original jadwal from ROOT SPK (first in lineage)
-            $rootDetail = $rootSpk->details->where('part_id', $partId)->first();
-            
-            $displayJadwal = 0;
-            
-            if ($rootDetail) {
-                $displayJadwal = $rootDetail->original_jadwal_delivery_pcs > 0 
-                    ? $rootDetail->original_jadwal_delivery_pcs 
-                    : $rootDetail->jadwal_delivery_pcs;
-            }
-            
-            // Fallback to current SPK if 0
-            if ($displayJadwal == 0) {
-                 $displayJadwal = ($detail->original_jadwal_delivery_pcs ?? 0) > 0 
-                    ? $detail->original_jadwal_delivery_pcs 
-                    : $detail->jadwal_delivery_pcs;
-            }
-            
-            $displayJumlahBox = $qtyPerBox > 0 ? round($displayJadwal / $qtyPerBox) : 0;
-            
-            // Calculate balance based on original jadwal from root SPK
-            $balance = $displayJadwal - $totalScanned;
-            // Ensure positive balance display logic if over-delivery? (Usually kept as real math)
+            $balance = $targetTotal - $totalScanned;
             
             $details[] = [
-                'part' => $detail->part,
-                'qty_packing_box' => $detail->qty_packing_box,
-                'jadwal_delivery_pcs' => $displayJadwal,
-                'jumlah_pulling_box' => $displayJumlahBox,
+                'part' => $data['part'],
+                'qty_packing_box' => $qtyPerBox,
+                'jadwal_delivery_pcs' => $targetTotal,
+                'jumlah_pulling_box' => $qtyPerBox > 0 ? ceil($targetTotal / $qtyPerBox) : 0,
                 'actual_cycles' => $actualCycles,
                 'total_pulling_pcs' => $totalScanned,
-                'total_pulling_box' => $qtyPerBox > 0 ? round($totalScanned / $qtyPerBox) : 0,
-                'balance_box' => $qtyPerBox > 0 ? round($balance / $qtyPerBox) : 0,
+                'total_pulling_box' => $qtyPerBox > 0 ? ceil($totalScanned / $qtyPerBox) : 0,
+                'balance_box' => $qtyPerBox > 0 ? ceil($balance / $qtyPerBox) : 0,
+                'po_number' => '-', // Merged
             ];
         }
+
 
         // Load parent SPK for cycle tracking display
         $spk->load('parentSpk');
@@ -1100,6 +1431,56 @@ class FinishGoodOutController extends Controller
 
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal reset: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Check Stock Quantity and Send Alert if Low
+     */
+    protected function checkStockAlert($partId, $qtyJustOut)
+    {
+        try {
+            // Get Part Info
+            $part = \App\Models\SMPart::find($partId);
+            if (!$part) return;
+
+            // Calculate Current Stock (Finish Good Warehouse Logic)
+            $totalIn = \App\Models\TFinishGoodIn::where('part_id', $partId)->sum('qty');
+            $totalOutResult = TFinishGoodOut::where('part_id', $partId)->sum('qty');
+            
+            $currentStock = $totalIn - $totalOutResult;
+            $limit = $part->min_stock ?? 0; // Dynamic from Master Part
+            
+            // Check if we JUST crossed the threshold (prevent spam)
+            $prevStock = $currentStock + $qtyJustOut;
+            
+            if ($currentStock <= $limit && $prevStock > $limit) {
+                $targetPPIC = env('FONNTE_GROUP_PPIC', '0812xxxx'); // Uses .env or default
+                
+                $msg = "⚠️ *STOCK ALERT (FINISH GOOD)*\n\n";
+                $msg .= "Part: *{$part->nomor_part}*\n";
+                $msg .= "Nama: " . substr($part->nama_part, 0, 20) . "...\n";
+                $msg .= "Sisa Stock: *{$currentStock}* Pcs\n";
+                $msg .= "Min Stock: {$limit} Pcs\n\n"; // Update label
+                $msg .= "_Segera jadwalkan produksi/restock!_";
+                
+                // \App\Helpers\FonnteHelper::send($targetPPIC, $msg);
+            }
+        } catch (\Exception $e) {
+            Log::error('Stock Alert Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Validate sufficient stock before scan out
+     */
+    private function validateStock($partId, $qtyRequest)
+    {
+        // Use TStockFG as the single source of truth
+        $stock = \App\Models\TStockFG::where('part_id', $partId)->value('qty') ?? 0;
+        
+        if ($stock < $qtyRequest) {
+             throw new \Exception("STOK TIDAK CUKUP! Sisa Stok: " . number_format($stock) . " pcs. Request: " . number_format($qtyRequest) . " pcs. (Harap cek Stok FG)");
         }
     }
 }

@@ -250,7 +250,7 @@
         }
 
         try {
-            const response = await fetch(`/spk/api/plantgates?customer_id=${customerId}`);
+            const response = await fetch(`{{ route('spk.api.plantgates') }}?customer_id=${customerId}`);
             const data = await response.json();
             
             if (data.success) {
@@ -299,7 +299,7 @@
         if (!plantgateId) return;
 
         try {
-            const response = await fetch(`/spk/api/parts?plantgate_id=${plantgateId}`);
+            const response = await fetch(`{{ route('spk.api.parts') }}?plantgate_id=${plantgateId}`);
             const data = await response.json();
             
             if (data.success) {
@@ -433,6 +433,58 @@
                 emptyDetailState.style.display = 'block';
             }
         });
+
+        // Auto-Calculation Logic
+        const qtyPackingInput = row.querySelector(`[name="details[${currentIdx}][qty_packing_box]"]`);
+        const jadwalInput = row.querySelector(`[name="details[${currentIdx}][jadwal_delivery_pcs]"]`);
+        const pullingBoxInput = row.querySelector(`[name="details[${currentIdx}][jumlah_pulling_box]"]`);
+        const catatanInput = row.querySelector(`[name="details[${currentIdx}][catatan]"]`);
+
+        const calculate = () => {
+            const stdQty = parseFloat(qtyPackingInput.value) || 0;
+            const jadwalQty = parseFloat(jadwalInput.value) || 0;
+            
+            // 1. Calculate Pulling Box
+            if (stdQty > 0) {
+                pullingBoxInput.value = Math.ceil(jadwalQty / stdQty);
+            } else {
+                pullingBoxInput.value = 0;
+            }
+
+            // 2. Handle Additional Note (Non-Standard Qty)
+            if (stdQty > 0 && jadwalQty > 0) {
+                const remainder = jadwalQty % stdQty;
+                const boxes = Math.floor(jadwalQty / stdQty);
+                
+                // Template for auto-generated note
+                // "additional | Non-std qty: X box (XxY) + Z pcs (packing khusus)"
+                let noteText = "";
+                if (remainder > 0) {
+                     noteText = `additional | Non-std qty: ${boxes} box (${boxes}x${stdQty}) + ${remainder} pcs (packing khusus)`;
+                }
+
+                const currentNote = catatanInput.value.trim();
+                
+                // Update only if:
+                // - There is a remainder AND (Note is empty OR Note is auto-generated type)
+                // - OR There is NO remainder AND Note is auto-generated (Clear it)
+                
+                if (remainder > 0) {
+                    if (currentNote === "" || currentNote.startsWith("additional |")) {
+                        catatanInput.value = noteText;
+                    }
+                } else {
+                    // Valid standard quantity. Clean up the note if it was auto-generated.
+                    if (currentNote.startsWith("additional |")) {
+                        catatanInput.value = ""; 
+                    }
+                }
+            }
+        };
+        
+        // Attach listeners
+        qtyPackingInput?.addEventListener('input', calculate);
+        jadwalInput?.addEventListener('input', calculate);
     }
 
     function updatePartSelect(select, partsList) {
@@ -466,7 +518,7 @@
         const formData = new FormData(form);
         
         try {
-            const response = await fetch('/spk/{{ $spk->id }}/update', {
+            const response = await fetch('{{ route('spk.update', $spk->id) }}', {
                 method: 'POST',
                 body: formData,
                 headers: {

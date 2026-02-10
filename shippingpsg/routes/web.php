@@ -11,6 +11,9 @@ Route::get('/', function () {
 Route::get('/global-search', [App\Http\Controllers\Dashboard\GlobalSearchController::class, 'search'])->name('global.search');
 Route::get('/system/diagnostic', [App\Http\Controllers\Dashboard\DiagnosticController::class, 'run'])->name('system.diagnostic');
 
+// API Route for Inoac Part Check (Finish Good In)
+Route::get('/api/part/check/{partNumber}', [App\Http\Controllers\Api\PartCheckController::class, 'check']);
+
 // Profile Management (for Kabag and Management users)
 Route::prefix('profile')->name('profile.')->middleware([\App\Http\Middleware\CheckAuth::class])->group(function () {
     Route::get('/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('edit');
@@ -39,6 +42,8 @@ Route::prefix('shipping/stock')->name('stock.')->group(function () {
     Route::get('/po/import', [App\Http\Controllers\Stock\PurchaseOrderController::class, 'importForm'])->name('po.import.form');
     Route::post('/po/import', [App\Http\Controllers\Stock\PurchaseOrderController::class, 'import'])->name('po.import');
     Route::get('/po/export', [App\Http\Controllers\Stock\PurchaseOrderController::class, 'export'])->name('po.export');
+    Route::get('/po/api/part-stock/{part}', [App\Http\Controllers\Stock\PurchaseOrderController::class, 'getPartStock'])->name('po.api.part.stock');
+    Route::get('/po/api/part-po/{part}', [App\Http\Controllers\Stock\PurchaseOrderController::class, 'getPartPOs'])->name('po.api.part.po');
     Route::resource('po', App\Http\Controllers\Stock\PurchaseOrderController::class)->except(['show']);
 });
 
@@ -82,6 +87,7 @@ Route::prefix('finishgood/out')->name('finishgood.out.')->group(function () {
     // CRUD ops (Legacy / Other)
     Route::get('/{spk}/create', [App\Http\Controllers\FinishGood\FinishGoodOutController::class, 'create'])->name('create');
     Route::post('/store', [App\Http\Controllers\FinishGood\FinishGoodOutController::class, 'store'])->name('store');
+    Route::post('/store-manual', [App\Http\Controllers\FinishGood\FinishGoodOutController::class, 'storeManual'])->name('store-manual');
     
     Route::get('/{finishGoodOut}/detail', [App\Http\Controllers\FinishGood\FinishGoodOutController::class, 'detail'])->name('detail');
     // REMOVED old edit/update/destroy routes to prevent conflict
@@ -193,12 +199,14 @@ Route::prefix('shipping/delivery')->name('shipping.delivery.')->group(function (
 
 // Authentication Routes - Redirect to S2S MWT
 Route::get('/login', function () {
-    return redirect()->away('http://mwtpsg.test/login');
+    $portalUrl = env('PORTAL_URL', 'https://portal.s2smfg.biz.id');
+    return redirect()->away($portalUrl . '/login');
 })->name('login');
 
 // Logout Route
 Route::post('/logout', function () {
     \Auth::logout();
     session()->flush();
-    return redirect()->away('http://mwtpsg.test/login');
+    $portalUrl = env('PORTAL_URL', 'https://portal.s2smfg.biz.id');
+    return redirect()->away($portalUrl . '/login');
 })->name('logout');

@@ -208,7 +208,7 @@
         const formData = new FormData(form);
         
         try {
-            const response = await fetch(`/shipping/delivery/${deliveryId}`, {
+            const response = await fetch(`{{ url('shipping/delivery') }}/${deliveryId}`, {
                 method: 'POST',
                 body: formData,
                 headers: {

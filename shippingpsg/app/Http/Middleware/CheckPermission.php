@@ -18,14 +18,15 @@ class CheckPermission
         $userId = session('user_id');
         
         if (!$userId) {
-            return redirect()->away('http://mwtpsg.test/login');
+            return redirect()->away(env('URL_MASTER') . '/login');
         }
         
         // Load User model from masterpsg (shared database)
         $user = \App\Models\User::find($userId);
         
         if (!$user) {
-            return redirect()->away('http://mwtpsg.test/login');
+            $portalUrl = env('PORTAL_URL', 'https://masterpsg.s2smfg.biz.id');
+            return redirect()->away($portalUrl . '/login');
         }
         
         // Superadmin bisa akses semua

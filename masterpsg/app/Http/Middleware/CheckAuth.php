@@ -23,7 +23,7 @@ class CheckAuth
         // Check if user is logged in by checking session
         if (!session()->has('user_id')) {
             // Redirect to Portal Login (Root) - Only if not already coming from there
-            return redirect()->away('http://mwtpsg.test/login');
+            return redirect()->away(env('URL_MASTER') . '/login');
         }
 
         return $next($request);

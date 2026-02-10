@@ -111,6 +111,7 @@ class SPKController extends Controller
                 'details.*.jadwal_delivery_pcs' => 'required|integer|min:0',
                 'details.*.jumlah_pulling_box' => 'required|integer|min:0',
                 'details.*.catatan' => 'nullable|string',
+                'details.*.po_customer_id' => 'nullable|exists:t_purchase_order_customer,id',
             ]);
 
             // 1. Get Manpower from Session
@@ -127,19 +128,25 @@ class SPKController extends Controller
             
             $spk = null;
             DB::transaction(function () use ($validated, $manpowerName, &$spk) {
-                // 2. Generate Nomor SPK: SPK-YYYYMMDD-XXXX
-                $dateCode = date('Ymd');
-                $prefix = "SPK-{$dateCode}-";
+                // 2. Generate Nomor SPK: SPK/YYYY/MM/XXXX
+                $year = date('Y');
+                $month = date('m');
+                $prefix = "SPK/{$year}/{$month}/";
                 
-                // Find last number for today
-                $lastSpk = TSpk::where('nomor_spk', 'like', "{$prefix}%")
+                // Find last number for this month (Include Trashed/Deleted items)
+                // Note: We use length check or string manipulation carefully if mixed formats exist
+                $lastSpk = TSpk::withTrashed()
+                    ->where('nomor_spk', 'like', "{$prefix}%")
                     ->orderBy('nomor_spk', 'desc')
                     ->first();
                 
                 $nextSequence = 1;
                 if ($lastSpk) {
-                    $lastNumberRaw = str_replace($prefix, '', $lastSpk->nomor_spk);
-                    $nextSequence = (int)$lastNumberRaw + 1;
+                    // Extract Sequence: SPK/2026/02/0001 -> 0001
+                    $suffix = substr($lastSpk->nomor_spk, strlen($prefix));
+                    if (is_numeric($suffix)) {
+                         $nextSequence = (int)$suffix + 1;
+                    }
                 }
                 
                 $generatedSpkNumber = $prefix . str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
@@ -161,11 +168,16 @@ class SPKController extends Controller
                     $qtyPack = $detail['qty_packing_box'];
                     $jadwalDelivery = $detail['jadwal_delivery_pcs'];
 
+                    $detailCatatan = $detail['catatan'] ?? '';
+
+                    // Check if qty is not multiple of packing box - Allow but add note
                     if ($qtyPack > 0 && ($jadwalDelivery % $qtyPack !== 0)) {
-                        // Optional: Throw error or allow but warn. User said "gaboleh ngga".
-                        // We will allow for now but frontend should block. 
-                        // Or throw exception here to strictly enforce it.
-                        throw new \Exception("Qty Delivery untuk item harus kelipatan Std Packing ($qtyPack). Input: $jadwalDelivery");
+                        $remainder = $jadwalDelivery % $qtyPack;
+                        $fullBoxes = floor($jadwalDelivery / $qtyPack);
+                        
+                        // Auto-generate note for non-standard packing
+                        $autoNote = "⚠️ Non-std qty: {$fullBoxes} box ({$fullBoxes}x{$qtyPack}) + {$remainder} pcs (packing khusus)";
+                        $detailCatatan = trim($detailCatatan . ' | ' . $autoNote, ' |');
                     }
 
                     TSpkDetail::create([
@@ -174,7 +186,8 @@ class SPKController extends Controller
                         'qty_packing_box' => $detail['qty_packing_box'],
                         'jadwal_delivery_pcs' => $detail['jadwal_delivery_pcs'],
                         'jumlah_pulling_box' => $detail['jumlah_pulling_box'],
-                        'catatan' => $detail['catatan'] ?? null,
+                        'catatan' => $detailCatatan,
+                        'po_customer_id' => $detail['po_customer_id'] ?? null,
                     ]);
                 }
             });
@@ -266,13 +279,31 @@ class SPKController extends Controller
 
                 // Buat detail baru
                 foreach ($details as $detail) {
+                    $qtyPack = $detail['qty_packing_box'];
+                    $jadwalDelivery = $detail['jadwal_delivery_pcs'];
+                    $detailCatatan = $detail['catatan'] ?? '';
+
+                    // Check if qty is not multiple of packing box - Allow but add note
+                    if ($qtyPack > 0 && ($jadwalDelivery % $qtyPack !== 0)) {
+                        $remainder = $jadwalDelivery % $qtyPack;
+                        $fullBoxes = floor($jadwalDelivery / $qtyPack);
+                        
+                        // Auto-generate note for non-standard packing
+                        $autoNote = "⚠️ Non-std qty: {$fullBoxes} box ({$fullBoxes}x{$qtyPack}) + {$remainder} pcs (packing khusus)";
+                        
+                        // Append note if not already present to avoid duplication if editing again
+                        if (!str_contains($detailCatatan, 'Non-std qty')) {
+                            $detailCatatan = trim($detailCatatan . ' | ' . $autoNote, ' |');
+                        }
+                    }
+
                     TSpkDetail::create([
                         'spk_id' => $spk->id,
                         'part_id' => $detail['part_id'],
                         'qty_packing_box' => $detail['qty_packing_box'],
                         'jadwal_delivery_pcs' => $detail['jadwal_delivery_pcs'],
                         'jumlah_pulling_box' => $detail['jumlah_pulling_box'],
-                        'catatan' => $detail['catatan'] ?? null,
+                        'catatan' => $detailCatatan,
                     ]);
                 }
             });

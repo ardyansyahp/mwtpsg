@@ -214,6 +214,27 @@ class DeliveryController extends Controller
                     'lokasi_saat_ini' => 'Departed (Actual) via scan'
                 ]);
 
+                // --- DEPARTURE ALERT (DRIVER SCAN) ---
+                try {
+                    $targetOps = env('FONNTE_GROUP_OPS', '0812xxxx');
+                    
+                    // Construct Message
+                    $msgDep = "🚛 *INFO PENGIRIMAN BERANGKAT (OTW)*\n\n";
+                    $msgDep .= "Truck: *{$truck->nopol_kendaraan}*\n";
+                    $msgDep .= "Surat Jalan: {$spk->no_surat_jalan}\n";
+                    $msgDep .= "Tujuan: {$fullDestination}\n\n";
+                    
+                    $msgDep .= "Plan Jam: {$spk->jam_berangkat_plan}\n";
+                    $msgDep .= "Actual Jam: " . $now->format('H:i') . "\n";
+                    $msgDep .= "Status Waktu: *{$status}*\n\n";
+                    
+                    $msgDep .= "_Scan by {$manpower->nama}_";
+
+                    // \App\Helpers\FonnteHelper::send($targetOps, $msgDep);
+                } catch (\Exception $eDep) {
+                    // Ignore
+                }
+
                 return $deliveryHeader;
             });
 
@@ -370,6 +391,23 @@ class DeliveryController extends Controller
                 ]
             );          });
 
+            // --- ARRIVAL ALERT ---
+            try {
+                $targetOps = env('FONNTE_GROUP_OPS', '0812xxxx');
+                $truck = $delivery->kendaraan->nopol_kendaraan ?? '-';
+                $dest = $delivery->destination ?? '-';
+                
+                $msgArr = "🏁 *INFO KEDATANGAN (ARRIVAL)*\n\n";
+                $msgArr .= "Truck: *{$truck}*\n";
+                $msgArr .= "Tujuan: {$dest}\n";
+                $msgArr .= "Waktu: " . $now->format('H:i') . "\n";
+                $msgArr .= "_Status: TIBA DI LOKASI_";
+                
+                // \App\Helpers\FonnteHelper::send($targetOps, $msgArr);
+            } catch (\Exception $eArr) {
+                Log::error('Arrival Alert Error: ' . $eArr->getMessage());
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Kedatangan berhasil dilaporkan. Terima kasih!',
@@ -434,6 +472,22 @@ class DeliveryController extends Controller
                 // Remove raw GPS data to manage storage, keeping only the milestone details
                 \App\Models\TGpsLog::where('delivery_header_id', $delivery->id)->delete();
             });
+
+            // --- RETURN ALERT ---
+            try {
+                $targetOps = env('FONNTE_GROUP_OPS', '0812xxxx');
+                $truck = $delivery->kendaraan->nopol_kendaraan ?? '-';
+                
+                $msgFin = "🏠 *INFO KEMBALI (RETURN)*\n\n";
+                $msgFin .= "Truck: *{$truck}*\n";
+                $msgFin .= "Status: KEMBALI DI POOL/PT\n";
+                $msgFin .= "Waktu: " . $now->format('H:i') . "\n";
+                $msgFin .= "_Armada Ready Next Trip_";
+                
+                // \App\Helpers\FonnteHelper::send($targetOps, $msgFin);
+            } catch (\Exception $eFin) {
+                Log::error('Return Alert Error: ' . $eFin->getMessage());
+            }
 
 
             return response()->json([

@@ -15,7 +15,7 @@ class StockOpnameController extends Controller
     {
         // Get all parts with their current stock
         // We join to ensure we get parts even if they don't have stock record (default 0)
-        $stocks = SMPart::with(['customer', 'stockFg'])
+        $stocks = SMPart::with(['customer', 'stockFg', 'latestStockOpname'])
             ->when($request->search, function($q) use ($request) {
                 $q->where('nomor_part', 'like', "%{$request->search}%")
                   ->orWhere('nama_part', 'like', "%{$request->search}%")
@@ -40,30 +40,50 @@ class StockOpnameController extends Controller
         ]);
 
         DB::transaction(function() use ($request) {
+            // Resolve Manpower ID from session
+            $manpowerString = session('user_id');
+            $manpowerId = null;
+            if ($manpowerString) {
+                $mp = \App\Models\MManpower::where('mp_id', $manpowerString)->first();
+                if ($mp) {
+                    $manpowerId = $mp->id;
+                }
+            }
+
             foreach ($request->opname_data as $data) {
                 // Get fresh system stock
                 $stockFg = TStockFG::firstOrNew(['part_id' => $data['part_id']]);
                 $systemQty = $stockFg->qty ?? 0;
                 $actualQty = $data['qty_actual'];
                 
-                // Only process if there is a difference or forced?
-                // Usually user only submits rows they want to change.
-                // But if they submit same value, maybe just log confirm? 
-                // Let's log everything submitted.
-                
-                $diff = $actualQty - $systemQty;
+                // Check if there is already an STO record for this part in the current month
+                $existingSto = TStockOpname::where('part_id', $data['part_id'])
+                    ->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)
+                    ->first();
 
-                // Create History
-                TStockOpname::create([
-                    'part_id' => $data['part_id'],
-                    'qty_system' => $systemQty,
-                    'qty_actual' => $actualQty,
-                    'diff' => $diff,
-                    'manpower_id' => null, // Or get from session if available
-                    'keterangan' => $data['keterangan'] ?? 'Manual Opname',
-                ]);
+                if ($existingSto) {
+                    // Revision
+                    $existingSto->update([
+                        'qty_actual' => $actualQty,
+                        'diff' => $actualQty - $existingSto->qty_system, 
+                        'keterangan' => $data['keterangan'] ?? 'Revisi STO (' . now()->format('d M') . ')',
+                        'manpower_id' => $manpowerId
+                    ]);
+                } else {
+                    // New STO
+                    $diff = $actualQty - $systemQty;
 
-                // Update Stock
+                    TStockOpname::create([
+                        'part_id' => $data['part_id'],
+                        'qty_system' => $systemQty,
+                        'qty_actual' => $actualQty,
+                        'diff' => $diff,
+                        'manpower_id' => $manpowerId, 
+                        'keterangan' => $data['keterangan'] ?? 'Manual Opname',
+                    ]);
+                }
+
                 $stockFg->qty = $actualQty;
                 $stockFg->save();
             }
@@ -133,9 +153,7 @@ class StockOpnameController extends Controller
                     // Update Logic
                     $stockFg = TStockFG::firstOrNew(['part_id' => $part->id]);
                     $systemQty = $stockFg->qty ?? 0;
-                    $diff = $qtyActual - $systemQty;
-
-
+                    
                     // Resolve Manpower ID (Integer)
                     $manpowerString = session('user_id');
                     $manpowerId = null;
@@ -146,15 +164,33 @@ class StockOpnameController extends Controller
                          }
                     }
 
-                    // Log History
-                    TStockOpname::create([
-                        'part_id' => $part->id,
-                        'qty_system' => $systemQty,
-                        'qty_actual' => $qtyActual,
-                        'diff' => $diff,
-                        'manpower_id' => $manpowerId,
-                        'keterangan' => $keterangan ?? 'Import CSV',
-                    ]);
+                    // Check for existing STO in current month
+                    $existingSto = TStockOpname::where('part_id', $part->id)
+                        ->whereMonth('created_at', now()->month)
+                        ->whereYear('created_at', now()->year)
+                        ->first();
+
+                    if ($existingSto) {
+                        // Revision: Update existing month record
+                        $existingSto->update([
+                            'qty_actual' => $qtyActual,
+                            'diff' => $qtyActual - $existingSto->qty_system,
+                            'keterangan' => $keterangan ?? 'Revisi Import (' . now()->format('d M') . ')',
+                            'manpower_id' => $manpowerId
+                        ]);
+                    } else {
+                        // New STO for this month
+                        $diff = $qtyActual - $systemQty;
+
+                        TStockOpname::create([
+                            'part_id' => $part->id,
+                            'qty_system' => $systemQty,
+                            'qty_actual' => $qtyActual,
+                            'diff' => $diff,
+                            'manpower_id' => $manpowerId,
+                            'keterangan' => $keterangan ?? 'Import CSV',
+                        ]);
+                    }
 
                     // Update Stock
                     $stockFg->qty = $qtyActual;

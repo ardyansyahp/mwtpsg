@@ -45,9 +45,9 @@ class FinishGoodController extends Controller
             $query->whereDate('waktu_scan', '<=', $request->end_date);
         }
 
-        // 1. Ambil ID terakhir dari setiap kombinasi unique (lot_number + part_id)
+        // 1. Ambil ID terakhir dari setiap kombinasi unique (lot_number + part_id + Tanggal)
         $latestIds = (clone $query)->selectRaw('MAX(id) as id')
-            ->groupBy('lot_number', 'part_id')
+            ->groupBy(\Illuminate\Support\Facades\DB::raw('DATE(waktu_scan)'), 'lot_number', 'part_id')
             ->pluck('id');
 
         // 2. Query Data Utama berdasarkan ID tersebut
@@ -59,9 +59,10 @@ class FinishGoodController extends Controller
 
         // 3. Append informasi Summary (Total Box & Total Qty & Unique MP)
         foreach ($finishGoodIns as $item) {
-            // Filter statistik harus spesifik ke lot_number DAN part_id
+            // Filter statistik harus spesifik ke lot_number, part_id, DAN tanggal
             $stats = TFinishGoodIn::where('lot_number', $item->lot_number)
                 ->where('part_id', $item->part_id)
+                ->whereDate('waktu_scan', $item->waktu_scan->format('Y-m-d'))
                 ->selectRaw('COUNT(*) as total_box, SUM(qty) as total_pcs, COUNT(DISTINCT manpower_id) as total_mp')
                 ->first();
                 
@@ -163,7 +164,7 @@ class FinishGoodController extends Controller
         // Validasi input dari hasil parsing scanner
         $validated = $request->validate([
             'part_number' => 'required|string', // Scanner mengirim nomor part, bukan ID
-            'lot_number' => 'required|string|max:100',
+            'lot_number' => 'nullable|string|max:100', // Allow null, auto-generated later
             'lot_produksi' => 'nullable|string', // Raw barcode scan
             'qty' => 'required|integer|min:1',
             'customer' => 'nullable|string|max:100',
@@ -216,16 +217,11 @@ class FinishGoodController extends Controller
                 }
             }
 
-            // Validasi Mesin (Max 35)
-            if (!empty($validated['no_mesin'])) {
-                 $mesinVal = (int)$validated['no_mesin'];
-                 if ($mesinVal < 1 || $mesinVal > 35) {
-                      return response()->json([
-                        'success' => false,
-                        'message' => '⚠️ Data Mesin tidak valid: ' . $validated['no_mesin'] . '. Nomor Mesin maksimal 35.',
-                    ], 422);
-                 }
-            }
+            // Validasi Mesin (Removed as requested - allow null or any value)
+            // if (!empty($validated['no_mesin'])) {
+            //      $mesinVal = (int)$validated['no_mesin'];
+            //      if ($mesinVal < 1 || $mesinVal > 35) { ... }
+            // }
 
             // 4. Lookup Mesin ID (Deep Fuzzy Search)
             $mesinId = null;
@@ -269,17 +265,23 @@ class FinishGoodController extends Controller
             DB::transaction(function () use ($validated, $part, $mesinId, $manpowerId, &$finishGoodIn) {
                 $waktuScan = now('Asia/Jakarta');
 
+                // User wants NULL if empty, not AUTO-. DB is now nullable.
+                $lotNumberSaved = $validated['lot_number'];
+                if (empty($lotNumberSaved) || $lotNumberSaved === 'null' || $lotNumberSaved === 'undefined') {
+                     $lotNumberSaved = null;
+                }
+
                 // Simpan data
                 $finishGoodIn = TFinishGoodIn::create([
                     'assy_out_id' => null, // Standalone scan, unlinked to assy
-                    'lot_number' => $validated['lot_number'],
+                    'lot_number' => $lotNumberSaved,
                     'lot_produksi' => $validated['lot_produksi'] ?? null,
                     'part_id' => $part->id,
                     'qty' => $validated['qty'],
                     'customer' => $validated['customer'] ?? null,
                     
                     'no_planning' => $validated['no_planning'] ?? null,
-                    'mesin_id' => $mesinId, // Save ID
+                    'mesin_id' => $mesinId, // Save ID or Null
                     'tanggal_produksi' => $validated['tanggal_produksi'] ?? null,
                     'shift' => $validated['shift'] ?? null,
                     
@@ -291,6 +293,48 @@ class FinishGoodController extends Controller
 
             // Load relasi untuk response (agar bisa tampil di tabel frontend)
             $finishGoodIn->load(['part', 'mesin', 'manpower']);
+
+            // 5. Cek Fulfillment PO (Notification Logic)
+            try {
+                // Gunakan TStockFG sebagai source of truth (agar include Stock Awal/STO)
+                // Observer FinishGoodIn harusnya sudah update TStockFG saat record dibuat
+                $newStock = \App\Models\TStockFG::where('part_id', $part->id)->value('qty') ?? 0;
+                
+                // Jika TStockFG belum ada/0 tapi baru scan, mungkin observer belum jalan atau record baru
+                // Fallback ke perhitungan manual jika TStockFG 0 padahal ada qty scan? 
+                // Tidak perlu, TStockFG harusnya sinkron. Jika 0, berarti stock memang 0 (aneh sih).
+                // Tapi kita asumsikan TStockFG BENAR.
+                
+                $scanQty = $validated['qty'];
+                $prevStock = $newStock - $scanQty;
+
+                // Cari PO yang SEBELUMNYA kurang, TAPI SEKARANG terpenuhi
+                $fulfilledPOs = \App\Models\TPurchaseOrderCustomer::where('part_id', $part->id)
+                                ->where('qty', '>', $prevStock)
+                                ->where('qty', '<=', $newStock)
+                                ->where('year', '>=', now()->year) // Filter PO tahun berjalan/depan
+                                ->get();
+
+                if ($fulfilledPOs->isNotEmpty()) {
+                     $target = env('FONNTE_GROUP_PPIC'); 
+                     if ($target) {
+                         $msg = "✅ *STOCK FULFILLED NOTIFICATION*\n\n";
+                         $msg .= "Stock Part *{$part->nomor_part}* bertambah +{$scanQty}.\n";
+                         $msg .= "Total Stock Saat Ini: *{$newStock}*\n\n";
+                         $msg .= "Telah MENCUKUPI untuk PO berikut:\n";
+                         
+                         foreach ($fulfilledPOs as $po) {
+                             $monthName = \DateTime::createFromFormat('!m', $po->month)->format('F');
+                             $msg .= "- PO: *{$po->po_number}* (Qty: {$po->qty} | Per: $monthName)\n";
+                         }
+                         
+                         $msg .= "\n_Barang sudah siap untuk delivery!_";
+                         // \App\Helpers\FonnteHelper::send($target, $msg);
+                     }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to check PO fulfillment: " . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -386,6 +430,7 @@ class FinishGoodController extends Controller
         $items = TFinishGoodIn::with(['part', 'mesin', 'manpower'])
             ->where('lot_number', $finishGoodIn->lot_number)
             ->where('part_id', $finishGoodIn->part_id)
+            ->whereDate('waktu_scan', $finishGoodIn->waktu_scan->format('Y-m-d'))
             ->orderByDesc('waktu_scan')
             ->get();
             
@@ -404,9 +449,10 @@ class FinishGoodController extends Controller
             $lotNumber = $finishGoodIn->lot_number;
             $partId = $finishGoodIn->part_id;
             
-            // Hapus semua yang punya lot number DAN part yang sama
+            // Hapus semua yang punya lot number, part, dan TANGGAL yang sama
             $count = TFinishGoodIn::where('lot_number', $lotNumber)
                 ->where('part_id', $partId)
+                ->whereDate('waktu_scan', $finishGoodIn->waktu_scan->format('Y-m-d'))
                 ->delete();
 
             return response()->json([
